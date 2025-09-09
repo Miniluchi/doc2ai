@@ -1,0 +1,8 @@
+nodes_modules/
+dist/
+.env
+.DS_Store
+.idea/
+.cursor/
+docs/
+CLAUDE.md
