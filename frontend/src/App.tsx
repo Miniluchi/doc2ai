@@ -1,21 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Settings, FileText, Cloud, Download, Activity } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Plus, Settings, FileText, Cloud, Download, Activity, AlertCircle } from 'lucide-react'
 import './App.css'
-
-interface DocumentSource {
-  name: string
-  platform: string
-  status: string
-  sourcePath: string
-  destination: string
-  lastSync?: string
-}
+import { AddSourceDialog } from './components/forms/AddSourceDialog'
+import { SourceCard } from './components/dashboard/SourceCard'
+import { useSources, useSourceStats } from './hooks/useSources'
+import { useMonitoring } from './hooks/useMonitoring'
+import { useConversionStats } from './hooks/useConversions'
 
 function App() {
-  const [sources] = useState<DocumentSource[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
+  
+  // Hooks pour les données
+  const { sources, loading: sourcesLoading, error: sourcesError, refetch: refetchSources } = useSources()
+  const { stats: sourceStats, loading: statsLoading } = useSourceStats()
+  const { status: monitoringStatus } = useMonitoring()
+  const { stats: conversionStats } = useConversionStats()
+  
+  // Rafraîchir les données quand refreshKey change
+  useEffect(() => {
+    if (refreshKey > 0) {
+      refetchSources()
+    }
+  }, [refreshKey, refetchSources])
+  
+  const handleSourceAdded = () => {
+    setRefreshKey(prev => prev + 1)
+  }
+  
+  const handleSync = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,18 +55,37 @@ function App() {
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
+        {/* Erreur globale */}
+        {sourcesError && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Erreur lors du chargement: {sourcesError}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Cloud className="h-5 w-5 text-blue-500" />
-                Connected Sources
+                Sources Connectées
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{sources.length}</div>
-              <p className="text-sm text-muted-foreground">Document sources configured</p>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-16 mb-2" />
+              ) : (
+                <div className="text-3xl font-bold">{sourceStats?.totalSources || sources.length}</div>
+              )}
+              <p className="text-sm text-muted-foreground">Sources documentaires configurées</p>
+              {sourceStats && sourceStats.activeSources > 0 && (
+                <Badge variant="outline" className="mt-2">
+                  {sourceStats.activeSources} actives
+                </Badge>
+              )}
             </CardContent>
           </Card>
 
@@ -55,12 +93,21 @@ function App() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Download className="h-5 w-5 text-green-500" />
-                Files Converted
+                Fichiers Convertis
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">0</div>
-              <p className="text-sm text-muted-foreground">Documents processed to Markdown</p>
+              <div className="text-3xl font-bold">
+                {conversionStats?.byStatus ? 
+                  Object.values(conversionStats.byStatus).reduce((a, b) => a + b, 0) : 0
+                }
+              </div>
+              <p className="text-sm text-muted-foreground">Documents traités en Markdown</p>
+              {conversionStats?.recent && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {conversionStats.recent} dernières 24h
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -68,12 +115,28 @@ function App() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5 text-orange-500" />
-                System Status
+                Statut Système
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Badge variant="secondary">Idle</Badge>
-              <p className="text-sm text-muted-foreground mt-2">No active conversions</p>
+              {monitoringStatus ? (
+                <>
+                  <Badge variant={monitoringStatus.isRunning ? "default" : "secondary"}>
+                    {monitoringStatus.isRunning ? "Actif" : "Inactif"}
+                  </Badge>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {monitoringStatus.isRunning 
+                      ? `${monitoringStatus.activeMonitors} sources surveillées`
+                      : "Monitoring arrêté"
+                    }
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Skeleton className="h-6 w-16 mb-2" />
+                  <Skeleton className="h-4 w-24" />
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -82,69 +145,71 @@ function App() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">Document Sources</h2>
-              <p className="text-muted-foreground">Configure your cloud drives and document repositories</p>
+              <h2 className="text-2xl font-semibold">Sources Documentaires</h2>
+              <p className="text-muted-foreground">Configurez vos drives cloud et dépôts de documents</p>
             </div>
-            <Button>
-              <Plus className="h-4 w-4" />
-              Add Source
-            </Button>
+            <AddSourceDialog onSourceAdded={handleSourceAdded}>
+              <Button>
+                <Plus className="h-4 w-4" />
+                Ajouter une Source
+              </Button>
+            </AddSourceDialog>
           </div>
 
-          {/* Empty State */}
-          {sources.length === 0 && (
-            <Card className="p-12 text-center">
-              <CardContent>
-                <Cloud className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <CardTitle className="mb-2">No Document Sources Yet</CardTitle>
-                <CardDescription className="mb-6 max-w-md mx-auto">
-                  Get started by connecting your first document source. Support for Microsoft SharePoint, 
-                  Google Drive, and other cloud storage platforms.
-                </CardDescription>
-                <Button size="lg">
-                  <Plus className="h-4 w-4" />
-                  Add Your First Source
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sources List (when not empty) */}
-          {sources.length > 0 && (
+          {/* Loading state */}
+          {sourcesLoading && (
             <div className="grid gap-4">
-              {sources.map((source, index) => (
-                <Card key={index}>
+              {[1, 2, 3].map((i) => (
+                <Card key={i}>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Cloud className="h-5 w-5 text-blue-500" />
-                        <div>
-                          <CardTitle>{source.name}</CardTitle>
-                          <CardDescription>{source.platform}</CardDescription>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-5 w-5" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
                       </div>
-                      <CardAction>
-                        <Badge variant="outline">{source.status}</Badge>
-                      </CardAction>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Source Path:</span>
-                        <code className="bg-muted px-2 py-1 rounded text-xs">{source.sourcePath}</code>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Destination:</span>
-                        <code className="bg-muted px-2 py-1 rounded text-xs">{source.destination}</code>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Last Sync:</span>
-                        <span>{source.lastSync || 'Never'}</span>
-                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
                     </div>
                   </CardContent>
                 </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!sourcesLoading && sources.length === 0 && (
+            <Card className="p-12 text-center">
+              <CardContent>
+                <Cloud className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <CardTitle className="mb-2">Aucune Source Documentaire</CardTitle>
+                <CardDescription className="mb-6 max-w-md mx-auto">
+                  Commencez par connecter votre première source documentaire. Support pour Microsoft SharePoint, 
+                  Google Drive et autres plateformes de stockage cloud.
+                </CardDescription>
+                <AddSourceDialog onSourceAdded={handleSourceAdded}>
+                  <Button size="lg">
+                    <Plus className="h-4 w-4" />
+                    Ajouter Votre Première Source
+                  </Button>
+                </AddSourceDialog>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Sources List */}
+          {!sourcesLoading && sources.length > 0 && (
+            <div className="grid gap-4">
+              {sources.map((source) => (
+                <SourceCard 
+                  key={source.id} 
+                  source={source} 
+                  onSync={handleSync}
+                />
               ))}
             </div>
           )}
@@ -155,8 +220,16 @@ function App() {
       <footer className="border-t mt-16">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>Doc2AI - Automated Documentation Converter for Developers</p>
-            <p>Self-hosted • Secure • AI-Ready</p>
+            <p>Doc2AI - Convertisseur Automatique de Documentation pour Développeurs</p>
+            <div className="flex items-center gap-2">
+              <p>Auto-hébergé • Sécurisé • Prêt IA</p>
+              {monitoringStatus?.isRunning && (
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-xs">En ligne</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </footer>
