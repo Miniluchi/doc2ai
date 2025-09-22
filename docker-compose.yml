@@ -1,0 +1,78 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: doc2ai-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - PORT=3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - CORS_ORIGIN=http://localhost:5173
+      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
+      - MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
+      - MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      - REDIS_URL=${REDIS_URL}
+      - STORAGE_PATH=/app/storage
+      - TEMP_PATH=/app/temp
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
+    volumes:
+      - backend_storage:/app/storage
+      - backend_temp:/app/temp
+      - backend_db:/app/prisma
+    depends_on:
+      - redis
+    networks:
+      - doc2ai-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:${BACKEND_PORT}/api
+        - VITE_NODE_ENV=production
+        - VITE_DEFAULT_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - VITE_DEFAULT_GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+        - VITE_DEFAULT_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
+        - VITE_DEFAULT_MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
+        - VITE_DEFAULT_MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
+    container_name: doc2ai-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+
+    depends_on:
+      - backend
+    networks:
+      - doc2ai-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: doc2ai-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - doc2ai-network
+
+volumes:
+  backend_storage:
+  backend_temp:
+  backend_db:
+  redis_data:
+
+networks:
+  doc2ai-network:
+    driver: bridge
