@@ -1,14 +1,3 @@
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,114 +7,136 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { 
-  Cloud, 
-  MoreHorizontal, 
-  TestTube, 
-  RefreshCw, 
-  Settings, 
-  Trash2,
-  Loader2,
-  CheckCircle,
-  XCircle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import {
   Calendar,
-  FolderOpen
-} from 'lucide-react'
-import type { Source } from '../../types/api'
-import { useSources } from '../../hooks/useSources'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+  CheckCircle,
+  Cloud,
+  FolderOpen,
+  Loader2,
+  MoreHorizontal,
+  RefreshCw,
+  Settings,
+  TestTube,
+  Trash2,
+  XCircle,
+} from "lucide-react";
+import { useState } from "react";
+import { useSources } from "../../hooks/useSources";
+import type { Source } from "../../types/api";
 
 interface SourceCardProps {
-  source: Source
-  onSync?: (sourceId: string) => void
+  source: Source;
+  onSync?: (sourceId: string) => void;
+  onDelete?: (sourceId: string) => void;
 }
 
-export function SourceCard({ source, onSync }: SourceCardProps) {
-  const [isTestingConnection, setIsTestingConnection] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [connectionResult, setConnectionResult] = useState<{ success: boolean; message: string } | null>(null)
+export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [connectionResult, setConnectionResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-  const { testConnection, syncSource, deleteSource } = useSources()
+  const { testConnection, syncSource, deleteSource } = useSources();
 
   const handleTestConnection = async () => {
     try {
-      setIsTestingConnection(true)
-      setConnectionResult(null)
-      const result = await testConnection(source.id)
-      setConnectionResult(result)
+      setIsTestingConnection(true);
+      setConnectionResult(null);
+      const result = await testConnection(source.id);
+      setConnectionResult(result);
     } catch (error) {
       setConnectionResult({
         success: false,
-        message: error instanceof Error ? error.message : 'Erreur de test'
-      })
+        message: error instanceof Error ? error.message : "Erreur de test",
+      });
     } finally {
-      setIsTestingConnection(false)
+      setIsTestingConnection(false);
     }
-  }
+  };
 
   const handleSync = async () => {
     try {
-      setIsSyncing(true)
-      await syncSource(source.id)
-      onSync?.(source.id)
+      setIsSyncing(true);
+      await syncSource(source.id);
+      onSync?.(source.id);
     } catch (error) {
-      console.error('Sync failed:', error)
+      console.error("Sync failed:", error);
     } finally {
-      setIsSyncing(false)
+      setIsSyncing(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      await deleteSource(source.id)
-      setShowDeleteDialog(false)
+      await deleteSource(source.id);
+      setShowDeleteDialog(false);
+      onDelete?.(source.id);
     } catch (error) {
-      console.error('Delete failed:', error)
+      console.error("Delete failed:", error);
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800">Actif</Badge>
-      case 'inactive':
-        return <Badge variant="secondary">Inactif</Badge>
-      case 'error':
-        return <Badge variant="destructive">Erreur</Badge>
+      case "active":
+        return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
+      case "inactive":
+        return <Badge variant="secondary">Inactif</Badge>;
+      case "error":
+        return <Badge variant="destructive">Erreur</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{status}</Badge>;
     }
-  }
+  };
 
   const getPlatformIcon = (_platform: string) => {
     // Vous pourriez ajouter des icônes spécifiques par plateforme ici
-    return <Cloud className="h-5 w-5 text-blue-500" />
-  }
+    return <Cloud className="h-5 w-5 text-blue-500" />;
+  };
 
   const getPlatformLabel = (platform: string) => {
     switch (platform) {
-      case 'sharepoint':
-        return 'Microsoft SharePoint'
-      case 'onedrive':
-        return 'Microsoft OneDrive'
-      case 'googledrive':
-        return 'Google Drive'
+      case "sharepoint":
+        return "Microsoft SharePoint";
+      case "onedrive":
+        return "Microsoft OneDrive";
+      case "googledrive":
+        return "Google Drive";
       default:
-        return platform
+        return platform;
     }
-  }
+  };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Jamais'
+    if (!dateString) return "Jamais";
     try {
-      return format(new Date(dateString), 'PPp', { locale: fr })
+      return format(new Date(dateString), "PPp", { locale: fr });
     } catch {
-      return 'Date invalide'
+      return "Date invalide";
     }
-  }
+  };
 
   return (
     <>
@@ -136,7 +147,9 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
               {getPlatformIcon(source.platform)}
               <div>
                 <CardTitle className="text-lg">{source.name}</CardTitle>
-                <CardDescription>{getPlatformLabel(source.platform)}</CardDescription>
+                <CardDescription>
+                  {getPlatformLabel(source.platform)}
+                </CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -148,7 +161,10 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleTestConnection} disabled={isTestingConnection}>
+                  <DropdownMenuItem
+                    onClick={handleTestConnection}
+                    disabled={isTestingConnection}
+                  >
                     {isTestingConnection ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -169,7 +185,7 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
                     <Settings className="mr-2 h-4 w-4" />
                     Configurer
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
                     className="text-red-600 hover:text-red-700"
                   >
@@ -181,15 +197,17 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           {/* Résultat du test de connexion */}
           {connectionResult && (
-            <div className={`p-3 rounded-lg border text-sm ${
-              connectionResult.success 
-                ? 'bg-green-50 border-green-200 text-green-800'
-                : 'bg-red-50 border-red-200 text-red-800'
-            }`}>
+            <div
+              className={`p-3 rounded-lg border text-sm ${
+                connectionResult.success
+                  ? "bg-green-50 border-green-200 text-green-800"
+                  : "bg-red-50 border-red-200 text-red-800"
+              }`}
+            >
               <div className="flex items-center gap-2">
                 {connectionResult.success ? (
                   <CheckCircle className="h-4 w-4" />
@@ -197,7 +215,9 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
                   <XCircle className="h-4 w-4" />
                 )}
                 <span className="font-medium">
-                  {connectionResult.success ? 'Connexion OK' : 'Connexion échouée'}
+                  {connectionResult.success
+                    ? "Connexion OK"
+                    : "Connexion échouée"}
                 </span>
               </div>
               <p className="mt-1">{connectionResult.message}</p>
@@ -216,21 +236,25 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
               </code>
             </div>
 
-            {source.config.destinations && source.config.destinations.length > 0 && (
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <FolderOpen className="h-4 w-4" />
-                  <span>Destinations:</span>
+            {source.config.destinations &&
+              source.config.destinations.length > 0 && (
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FolderOpen className="h-4 w-4" />
+                    <span>Destinations:</span>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    {source.config.destinations.map((dest, index) => (
+                      <code
+                        key={index}
+                        className="bg-muted px-2 py-1 rounded text-xs"
+                      >
+                        {dest}
+                      </code>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1 items-end">
-                  {source.config.destinations.map((dest, index) => (
-                    <code key={index} className="bg-muted px-2 py-1 rounded text-xs">
-                      {dest}
-                    </code>
-                  ))}
-                </div>
-              </div>
-            )}
+              )}
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -244,30 +268,39 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
           {/* Extensions et filtres */}
           {source.config.filters && (
             <div className="space-y-2">
-              {source.config.filters.extensions && source.config.filters.extensions.length > 0 && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Extensions:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {source.config.filters.extensions.map((ext, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {ext}
-                      </Badge>
-                    ))}
+              {source.config.filters.extensions &&
+                source.config.filters.extensions.length > 0 && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">
+                      Extensions:
+                    </span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {source.config.filters.extensions.map((ext, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {ext}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           )}
 
           {/* Jobs récents */}
           {source.jobs && source.jobs.length > 0 && (
             <div>
-              <span className="text-xs text-muted-foreground">Jobs récents:</span>
+              <span className="text-xs text-muted-foreground">
+                Jobs récents:
+              </span>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-xs">
-                  {source.jobs.length} job{source.jobs.length > 1 ? 's' : ''}
+                  {source.jobs.length} job{source.jobs.length > 1 ? "s" : ""}
                 </Badge>
-                {source.jobs.some(job => job.status === 'failed') && (
+                {source.jobs.some((job) => job.status === "failed") && (
                   <Badge variant="destructive" className="text-xs">
                     Erreurs
                   </Badge>
@@ -284,8 +317,9 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer la source ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. Toutes les données associées à la source "{source.name}" 
-              seront supprimées, y compris l'historique des conversions.
+              Cette action est irréversible. Toutes les données associées à la
+              source "{source.name}" seront supprimées, y compris l'historique
+              des conversions.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -300,5 +334,5 @@ export function SourceCard({ source, onSync }: SourceCardProps) {
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }
