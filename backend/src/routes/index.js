@@ -1,38 +1,41 @@
-import express from 'express'
-import sourcesRouter from './sources.js'
-import conversionsRouter from './conversions.js'
-import monitoringRouter from './monitoring.js'
+import express from "express";
+import sourcesRouter from "./sources.js";
+import conversionsRouter from "./conversions.js";
+import monitoringRouter from "./monitoring.js";
+import authRouter from "./auth.js";
 
-const router = express.Router()
+const router = express.Router();
 
 // API routes
-router.use('/sources', sourcesRouter)
-router.use('/conversions', conversionsRouter)
-router.use('/monitoring', monitoringRouter)
+router.use("/sources", sourcesRouter);
+router.use("/conversions", conversionsRouter);
+router.use("/monitoring", monitoringRouter);
+router.use("/auth", authRouter);
 
 // Health check route
-router.get('/health', (req, res) => {
+router.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: 'Doc2AI API is running',
+    message: "Doc2AI API is running",
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  })
-})
+    version: "1.0.0",
+  });
+});
 
 // API info route
-router.get('/', (req, res) => {
+router.get("/", (req, res) => {
   res.json({
-    name: 'Doc2AI Backend API',
-    version: '1.0.0',
-    description: 'API for converting documents to Markdown using AI',
+    name: "Doc2AI Backend API",
+    version: "1.0.0",
+    description: "API for converting documents to Markdown using AI",
     endpoints: {
-      sources: '/api/sources',
-      conversions: '/api/conversions',
-      monitoring: '/api/monitoring'
+      sources: "/api/sources",
+      conversions: "/api/conversions",
+      monitoring: "/api/monitoring",
+      auth: "/api/auth",
     },
-    documentation: 'https://github.com/yourusername/doc2ai'
-  })
-})
+    documentation: "https://github.com/yourusername/doc2ai",
+  });
+});
 
-export default router
+export default router;
