@@ -30,6 +30,7 @@ import { CheckCircle, FileText, FolderOpen, Loader2, Plus } from "lucide-react";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { useGoogleAuth } from "../../hooks/useGoogleAuth";
 import { useSources } from "../../hooks/useSources";
 import type { CreateSourceRequest } from "../../types/api";
 import { GoogleAuthButton } from "../auth/GoogleAuthButton";
@@ -65,9 +66,6 @@ export function AddSourceDialog({
 }: AddSourceDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [googleRefreshToken, setGoogleRefreshToken] = useState<string>("");
-  const [googleUserEmail, setGoogleUserEmail] = useState<string>("");
-  const [authError, setAuthError] = useState<string>("");
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<{
     id: string;
@@ -76,6 +74,7 @@ export function AddSourceDialog({
   } | null>(null);
 
   const { createSource } = useSources();
+  const { user: googleUser, error: authError } = useGoogleAuth();
 
   const form = useForm<SourceFormData>({
     resolver: zodResolver(sourceFormSchema),
@@ -92,27 +91,12 @@ export function AddSourceDialog({
 
   const selectedPlatform = form.watch("platform");
 
-  // Réinitialiser l'auth Google quand on change de plateforme
+  // Réinitialiser la sélection de dossier quand on change de plateforme
   React.useEffect(() => {
     if (selectedPlatform !== "googledrive") {
-      setGoogleRefreshToken("");
-      setGoogleUserEmail("");
-      setAuthError("");
       setSelectedFolder(null);
     }
   }, [selectedPlatform]);
-
-  const handleGoogleAuthSuccess = (refreshToken: string, userEmail: string) => {
-    setGoogleRefreshToken(refreshToken);
-    setGoogleUserEmail(userEmail);
-    setAuthError("");
-  };
-
-  const handleGoogleAuthError = (error: string) => {
-    setAuthError(error);
-    setGoogleRefreshToken("");
-    setGoogleUserEmail("");
-  };
 
   const handleFolderSelect = (folder: {
     id: string;
@@ -125,8 +109,8 @@ export function AddSourceDialog({
   };
 
   const openFolderPicker = () => {
-    if (!googleRefreshToken) {
-      setAuthError("Veuillez vous connecter avec Google d'abord");
+    if (!googleUser?.refreshToken) {
+      alert("Veuillez vous connecter avec Google d'abord");
       return;
     }
     setShowFolderPicker(true);
@@ -137,8 +121,8 @@ export function AddSourceDialog({
       setIsSubmitting(true);
 
       // Validation spécifique pour Google Drive
-      if (data.platform === "googledrive" && !googleRefreshToken) {
-        setAuthError("Veuillez vous connecter avec Google d'abord");
+      if (data.platform === "googledrive" && !googleUser?.refreshToken) {
+        alert("Veuillez vous connecter avec Google d'abord");
         return;
       }
 
@@ -148,7 +132,7 @@ export function AddSourceDialog({
         credentials = {
           clientId: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_ID,
           clientSecret: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
-          refreshToken: googleRefreshToken,
+          refreshToken: googleUser?.refreshToken,
         };
       } else {
         // Microsoft credentials par défaut
@@ -198,10 +182,7 @@ export function AddSourceDialog({
       // Fermer le dialog et reset
       setOpen(false);
       form.reset();
-      setGoogleRefreshToken("");
-      setGoogleUserEmail("");
       setSelectedFolder(null);
-      setAuthError("");
       onSourceAdded?.();
     } catch (error) {
       console.error("Error creating source:", error);
@@ -330,10 +311,7 @@ export function AddSourceDialog({
                 </div>
 
                 {selectedPlatform === "googledrive" ? (
-                  <GoogleAuthButton
-                    onAuthSuccess={handleGoogleAuthSuccess}
-                    onAuthError={handleGoogleAuthError}
-                  />
+                  <GoogleAuthButton />
                 ) : (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
@@ -359,7 +337,7 @@ export function AddSourceDialog({
 
             {/* 3. Configuration des dossiers */}
             {selectedPlatform &&
-              (googleUserEmail || selectedPlatform !== "googledrive") && (
+              (googleUser?.email || selectedPlatform !== "googledrive") && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-sm font-semibold">
@@ -400,7 +378,7 @@ export function AddSourceDialog({
                                   type="button"
                                   variant="outline"
                                   onClick={openFolderPicker}
-                                  disabled={!googleRefreshToken}
+                                  disabled={!googleUser?.refreshToken}
                                 >
                                   <FolderOpen className="h-4 w-4" />
                                 </Button>
@@ -477,7 +455,7 @@ export function AddSourceDialog({
                   {/* Prévisualisation des fichiers pour Google Drive */}
                   {selectedPlatform === "googledrive" &&
                     selectedFolder &&
-                    googleRefreshToken && (
+                    googleUser?.refreshToken && (
                       <FilePreview
                         folderId={selectedFolder.id}
                         folderName={selectedFolder.name}
@@ -486,7 +464,7 @@ export function AddSourceDialog({
                             .VITE_DEFAULT_GOOGLE_CLIENT_ID,
                           clientSecret: import.meta.env
                             .VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
-                          refreshToken: googleRefreshToken,
+                          refreshToken: googleUser.refreshToken,
                         }}
                         extensions={
                           form
@@ -507,7 +485,7 @@ export function AddSourceDialog({
 
             {/* 4. Filtres (optionnel, collapsible) */}
             {selectedPlatform &&
-              (googleUserEmail || selectedPlatform !== "googledrive") && (
+              (googleUser?.email || selectedPlatform !== "googledrive") && (
                 <details className="space-y-4">
                   <summary className="flex items-center gap-2 cursor-pointer">
                     <div className="flex items-center justify-center w-6 h-6 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold">
@@ -574,7 +552,7 @@ export function AddSourceDialog({
                 type="submit"
                 disabled={
                   isSubmitting ||
-                  (selectedPlatform === "googledrive" && !googleUserEmail)
+                  (selectedPlatform === "googledrive" && !googleUser?.email)
                 }
                 className="flex-1"
               >
@@ -595,7 +573,7 @@ export function AddSourceDialog({
         </Form>
 
         {/* Google Drive Folder Picker */}
-        {selectedPlatform === "googledrive" && googleRefreshToken && (
+        {selectedPlatform === "googledrive" && googleUser?.refreshToken && (
           <GoogleDriveFolderPicker
             isOpen={showFolderPicker}
             onClose={() => setShowFolderPicker(false)}
@@ -603,7 +581,7 @@ export function AddSourceDialog({
             credentials={{
               clientId: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_ID,
               clientSecret: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
-              refreshToken: googleRefreshToken,
+              refreshToken: googleUser.refreshToken,
             }}
           />
         )}
