@@ -238,6 +238,74 @@ class SourceController {
       });
     }
   }
+
+  // GET /api/sources/google-drive/folders?parent_id=xxx&credentials=xxx
+  async getGoogleDriveFolders(req, res) {
+    try {
+      const { parent_id = "root" } = req.query;
+      const { credentials } = req.body;
+
+      if (!credentials) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing Google Drive credentials",
+        });
+      }
+
+      const folders = await sourceService.getGoogleDriveFolders(
+        parent_id,
+        credentials,
+      );
+
+      res.json({
+        success: true,
+        data: folders,
+      });
+    } catch (error) {
+      console.error("Error in getGoogleDriveFolders:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch Google Drive folders",
+        error: error.message,
+      });
+    }
+  }
+
+  // POST /api/sources/google-drive/preview-files
+  async previewGoogleDriveFiles(req, res) {
+    try {
+      const {
+        folder_id = "root",
+        credentials,
+        extensions = [".docx", ".pdf", ".doc", ".txt"],
+      } = req.body;
+
+      if (!credentials) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing Google Drive credentials",
+        });
+      }
+
+      const files = await sourceService.previewGoogleDriveFiles(
+        folder_id,
+        credentials,
+        extensions,
+      );
+
+      res.json({
+        success: true,
+        data: files,
+      });
+    } catch (error) {
+      console.error("Error in previewGoogleDriveFiles:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to preview Google Drive files",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default SourceController;

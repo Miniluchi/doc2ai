@@ -20,5 +20,13 @@ router.post(
   sourceController.testConnection.bind(sourceController),
 );
 router.post("/:id/sync", sourceController.syncSource.bind(sourceController));
+router.post(
+  "/google-drive/folders",
+  sourceController.getGoogleDriveFolders.bind(sourceController),
+);
+router.post(
+  "/google-drive/preview-files",
+  sourceController.previewGoogleDriveFiles.bind(sourceController),
+);
 
 export default router;
