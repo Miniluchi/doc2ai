@@ -158,6 +158,18 @@ LOG_LEVEL=info
 
 ## Testing Strategy
 
+### Feature Testing Workflow
+
+- **Complete environment**: `./start.sh` (takes approximately 30 seconds to fully launch)
+  - Rebuilds all containers without cache
+  - Starts all services in background
+  - Shows real-time logs during startup
+- **Monitor specific container logs**: `docker compose logs -f [service_name]`
+  - Backend: `docker compose logs -f backend`
+  - Frontend: `docker compose logs -f frontend`
+  - Redis: `docker compose logs -f redis`
+- **View recent logs**: `docker compose logs backend --tail 50`
+
 ### Docker Workflow (Recommended)
 
 - **Development**: Use `./start.sh` for complete environment
@@ -176,8 +188,8 @@ LOG_LEVEL=info
 
 ### Pre-commit Validation
 
-1. `./start.sh` to verify everything starts correctly
-2. Check logs with `docker compose logs -f`
+1. `./start.sh` to verify everything starts correctly (wait ~30 seconds for full startup)
+2. Check logs with `docker compose logs -f` to monitor service health
 3. Test main API endpoints
 4. Validate user interface on http://localhost:5173
 
