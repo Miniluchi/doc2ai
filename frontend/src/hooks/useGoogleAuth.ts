@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TokenStorage } from "../services/tokenStorage";
 
 interface GoogleUser {
   email: string;
@@ -24,17 +25,35 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   useEffect(() => {
     const checkAuthData = () => {
       try {
+        // D'abord vérifier s'il y a des credentials persistés
+        const storedCredentials = TokenStorage.getCredentials();
+        if (storedCredentials) {
+          setUser({
+            email: storedCredentials.email,
+            name: storedCredentials.name,
+            photoLink: storedCredentials.photoLink,
+            refreshToken: storedCredentials.refreshToken,
+          });
+          return; // On a trouvé des credentials valides, pas besoin de vérifier OAuth callback
+        }
+
+        // Sinon, vérifier s'il y a des nouvelles données d'auth (callback OAuth)
         const authData = localStorage.getItem("google_auth_data");
         if (authData) {
           const parsedData = JSON.parse(authData);
-          setUser({
+          const userCredentials = {
             email: parsedData.user.email,
             name: parsedData.user.name,
             photoLink: parsedData.user.photoLink,
             refreshToken: parsedData.refresh_token,
-          });
+          };
 
-          // Nettoyer localStorage après récupération
+          setUser(userCredentials);
+
+          // Persister les credentials pour les prochaines fois
+          TokenStorage.saveCredentials(userCredentials);
+
+          // Nettoyer les données temporaires du callback
           localStorage.removeItem("google_auth_data");
         }
 
@@ -86,6 +105,7 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   const disconnect = (): void => {
     setUser(null);
     setError(null);
+    TokenStorage.clearCredentials(); // Nettoyer les credentials persistés
   };
 
   return {
