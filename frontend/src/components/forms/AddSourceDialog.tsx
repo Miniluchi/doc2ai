@@ -33,6 +33,8 @@ import * as z from "zod";
 import { useSources } from "../../hooks/useSources";
 import type { CreateSourceRequest } from "../../types/api";
 import { GoogleAuthButton } from "../auth/GoogleAuthButton";
+import FilePreview from "./FilePreview";
+import GoogleDriveFolderPicker from "./GoogleDriveFolderPicker";
 
 // Schéma de validation simplifié
 const sourceFormSchema = z.object({
@@ -66,6 +68,12 @@ export function AddSourceDialog({
   const [googleRefreshToken, setGoogleRefreshToken] = useState<string>("");
   const [googleUserEmail, setGoogleUserEmail] = useState<string>("");
   const [authError, setAuthError] = useState<string>("");
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<{
+    id: string;
+    name: string;
+    path: string;
+  } | null>(null);
 
   const { createSource } = useSources();
 
@@ -90,6 +98,7 @@ export function AddSourceDialog({
       setGoogleRefreshToken("");
       setGoogleUserEmail("");
       setAuthError("");
+      setSelectedFolder(null);
     }
   }, [selectedPlatform]);
 
@@ -103,6 +112,24 @@ export function AddSourceDialog({
     setAuthError(error);
     setGoogleRefreshToken("");
     setGoogleUserEmail("");
+  };
+
+  const handleFolderSelect = (folder: {
+    id: string;
+    name: string;
+    path: string;
+  }) => {
+    setSelectedFolder(folder);
+    form.setValue("sourcePath", folder.id); // Pour Google Drive, on utilise l'ID
+    setShowFolderPicker(false);
+  };
+
+  const openFolderPicker = () => {
+    if (!googleRefreshToken) {
+      setAuthError("Veuillez vous connecter avec Google d'abord");
+      return;
+    }
+    setShowFolderPicker(true);
   };
 
   const onSubmit = async (data: SourceFormData) => {
@@ -173,6 +200,8 @@ export function AddSourceDialog({
       form.reset();
       setGoogleRefreshToken("");
       setGoogleUserEmail("");
+      setSelectedFolder(null);
+      setAuthError("");
       onSourceAdded?.();
     } catch (error) {
       console.error("Error creating source:", error);
@@ -201,7 +230,7 @@ export function AddSourceDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -351,14 +380,47 @@ export function AddSourceDialog({
                           Dossier à surveiller
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="/ (pour tout le drive)"
-                            {...field}
-                          />
+                          {selectedPlatform === "googledrive" ? (
+                            <div className="space-y-2">
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder={
+                                    selectedFolder
+                                      ? selectedFolder.name
+                                      : "Cliquez pour choisir un dossier"
+                                  }
+                                  value={
+                                    selectedFolder ? selectedFolder.name : ""
+                                  }
+                                  readOnly
+                                  onClick={openFolderPicker}
+                                  className="cursor-pointer"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={openFolderPicker}
+                                  disabled={!googleRefreshToken}
+                                >
+                                  <FolderOpen className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {selectedFolder && (
+                                <p className="text-sm text-muted-foreground">
+                                  Chemin: {selectedFolder.path || "/"}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <Input
+                              placeholder="/ (pour tout le drive)"
+                              {...field}
+                            />
+                          )}
                         </FormControl>
                         <FormDescription>
                           {selectedPlatform === "googledrive"
-                            ? "Le dossier à surveiller. Laissez \"/\" pour tout votre Google Drive, ou utilisez l'ID d'un dossier spécifique."
+                            ? "Choisissez le dossier à surveiller dans votre Google Drive"
                             : 'Le dossier dont vous voulez convertir les documents. "/" pour surveiller tout le drive.'}
                         </FormDescription>
                         <FormMessage />
@@ -411,6 +473,35 @@ export function AddSourceDialog({
                       </FormItem>
                     )}
                   />
+
+                  {/* Prévisualisation des fichiers pour Google Drive */}
+                  {selectedPlatform === "googledrive" &&
+                    selectedFolder &&
+                    googleRefreshToken && (
+                      <FilePreview
+                        folderId={selectedFolder.id}
+                        folderName={selectedFolder.name}
+                        credentials={{
+                          clientId: import.meta.env
+                            .VITE_DEFAULT_GOOGLE_CLIENT_ID,
+                          clientSecret: import.meta.env
+                            .VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
+                          refreshToken: googleRefreshToken,
+                        }}
+                        extensions={
+                          form
+                            .watch("extensions")
+                            ?.split(",")
+                            .map((e) => e.trim())
+                            .filter((e) => e.length > 0) || [
+                            ".docx",
+                            ".pdf",
+                            ".doc",
+                            ".txt",
+                          ]
+                        }
+                      />
+                    )}
                 </div>
               )}
 
@@ -502,6 +593,20 @@ export function AddSourceDialog({
             </div>
           </form>
         </Form>
+
+        {/* Google Drive Folder Picker */}
+        {selectedPlatform === "googledrive" && googleRefreshToken && (
+          <GoogleDriveFolderPicker
+            isOpen={showFolderPicker}
+            onClose={() => setShowFolderPicker(false)}
+            onFolderSelect={handleFolderSelect}
+            credentials={{
+              clientId: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_ID,
+              clientSecret: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
+              refreshToken: googleRefreshToken,
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
