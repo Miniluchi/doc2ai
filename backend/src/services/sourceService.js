@@ -404,6 +404,109 @@ class SourceService {
       throw error;
     }
   }
+
+  async getGoogleDriveFolders(parentId, credentials) {
+    try {
+      console.log(`🔍 Fetching Google Drive folders from parent: ${parentId}`);
+
+      // Créer une configuration temporaire pour le connecteur
+      const config = {
+        credentials: credentials,
+        sourcePath: parentId,
+        destinations: [],
+        filters: { extensions: [], excludePatterns: [] },
+      };
+
+      const connector = DriveConnectorFactory.createConnector(
+        "googledrive",
+        config,
+      );
+      await connector.authenticate();
+
+      const folders = await connector.listFolders(parentId);
+
+      await connector.cleanup();
+
+      console.log(`✅ Found ${folders.length} folders`);
+      return folders;
+    } catch (error) {
+      console.error("Error fetching Google Drive folders:", error);
+      throw error;
+    }
+  }
+
+  async previewGoogleDriveFiles(folderId, credentials, allowedExtensions) {
+    try {
+      console.log(`🔍 Previewing files in Google Drive folder: ${folderId}`);
+      console.log(
+        "allowedExtensions type:",
+        typeof allowedExtensions,
+        "value:",
+        allowedExtensions,
+      );
+
+      // Convert allowedExtensions to array properly
+      let extensionsArray;
+      if (Array.isArray(allowedExtensions)) {
+        extensionsArray = allowedExtensions;
+      } else if (
+        typeof allowedExtensions === "object" &&
+        allowedExtensions !== null
+      ) {
+        // Convert object with numeric indices to array
+        extensionsArray = Object.values(allowedExtensions);
+      } else {
+        extensionsArray = [allowedExtensions];
+      }
+      console.log("extensionsArray:", extensionsArray);
+
+      // Créer une configuration temporaire pour le connecteur
+      const config = {
+        credentials: credentials,
+        sourcePath: folderId,
+        destinations: [],
+        filters: { extensions: extensionsArray, excludePatterns: [] },
+      };
+
+      const connector = DriveConnectorFactory.createConnector(
+        "googledrive",
+        config,
+      );
+      await connector.authenticate();
+
+      const files = await connector.listFiles(folderId);
+
+      // Filtrer par extensions
+      const filteredFiles = files.filter((file) => {
+        if (!file.name) return false;
+        const fileExt = file.name.toLowerCase().split(".").pop();
+        return extensionsArray.some((ext) =>
+          ext.toLowerCase().includes(fileExt),
+        );
+      });
+
+      await connector.cleanup();
+
+      console.log(
+        `✅ Found ${filteredFiles.length} convertible files out of ${files.length} total`,
+      );
+
+      return {
+        totalFiles: files.length,
+        convertibleFiles: filteredFiles.length,
+        files: filteredFiles.map((file) => ({
+          id: file.id,
+          name: file.name,
+          size: file.size,
+          modifiedTime: file.modifiedTime,
+          mimeType: file.mimeType,
+        })),
+      };
+    } catch (error) {
+      console.error("Error previewing Google Drive files:", error);
+      throw error;
+    }
+  }
 }
 
 export default SourceService;
