@@ -30,12 +30,28 @@ import { CheckCircle, FileText, FolderOpen, Loader2, Plus } from "lucide-react";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import GoogleDriveIconUrl from "../../assets/GoogleDrive.svg";
+import OneDriveIconUrl from "../../assets/OneDrive.svg";
+import SharePointIconUrl from "../../assets/Sharepoint.svg";
 import { useGoogleAuth } from "../../hooks/useGoogleAuth";
 import { useSources } from "../../hooks/useSources";
 import type { CreateSourceRequest } from "../../types/api";
 import { GoogleAuthButton } from "../auth/GoogleAuthButton";
 import FilePreview from "./FilePreview";
 import GoogleDriveFolderPicker from "./GoogleDriveFolderPicker";
+
+// Composants SVG wrappés
+const GoogleDriveIcon = ({ className }: { className?: string }) => (
+  <img src={GoogleDriveIconUrl} className={className} alt="Google Drive" />
+);
+
+const OneDriveIcon = ({ className }: { className?: string }) => (
+  <img src={OneDriveIconUrl} className={className} alt="OneDrive" />
+);
+
+const SharePointIcon = ({ className }: { className?: string }) => (
+  <img src={SharePointIconUrl} className={className} alt="SharePoint" />
+);
 
 // Schéma de validation simplifié
 const sourceFormSchema = z.object({
@@ -198,11 +214,11 @@ export function AddSourceDialog({
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case "googledrive":
-        return "🔵";
+        return <GoogleDriveIcon className="w-5 h-5" />;
       case "sharepoint":
-        return "🟣";
+        return <SharePointIcon className="w-5 h-5" />;
       case "onedrive":
-        return "🔷";
+        return <OneDriveIcon className="w-5 h-5" />;
       default:
         return "📁";
     }
@@ -272,17 +288,19 @@ export function AddSourceDialog({
                       <SelectContent>
                         <SelectItem value="googledrive">
                           <span className="flex items-center gap-2">
-                            🔵 Google Drive
+                            <GoogleDriveIcon className="w-4 h-4" /> Google Drive
                           </span>
                         </SelectItem>
                         <SelectItem value="sharepoint">
                           <span className="flex items-center gap-2">
-                            🟣 Microsoft SharePoint
+                            <SharePointIcon className="w-4 h-4" />
+                            Microsoft SharePoint
                           </span>
                         </SelectItem>
                         <SelectItem value="onedrive">
                           <span className="flex items-center gap-2">
-                            🔷 Microsoft OneDrive
+                            <OneDriveIcon className="w-4 h-4" />
+                            Microsoft OneDrive
                           </span>
                         </SelectItem>
                       </SelectContent>
@@ -300,8 +318,8 @@ export function AddSourceDialog({
                   <div className="flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full text-sm font-semibold">
                     2
                   </div>
-                  <h3 className="text-lg font-medium">
-                    Connexion à {getPlatformIcon(selectedPlatform)}{" "}
+                  <h3 className="text-lg font-medium flex items-center gap-2">
+                    Connexion à {getPlatformIcon(selectedPlatform)}
                     {selectedPlatform === "googledrive"
                       ? "Google Drive"
                       : selectedPlatform === "sharepoint"
