@@ -63,7 +63,22 @@ const sourceFormSchema = z.object({
   }),
   sourcePath: z.string().min(1, "Indiquez le dossier à surveiller"),
   siteUrl: z.string().url("URL invalide").optional().or(z.literal("")),
-  destination: z.string().min(1, "Où voulez-vous sauvegarder vos fichiers ?"),
+  destination: z
+    .string()
+    .min(1, "Où voulez-vous sauvegarder vos fichiers ?")
+    .max(200, "Le chemin de destination est trop long (max 200 caractères)")
+    .regex(
+      /^[a-zA-Z0-9/_-]+$/,
+      "Le chemin ne peut contenir que des lettres, chiffres, tirets, underscores et slashes",
+    )
+    .refine(
+      (val) => !val.includes(".."),
+      "Le chemin ne peut pas contenir '..' (sécurité)",
+    )
+    .refine(
+      (val) => !val.startsWith("/") && !val.startsWith("\\"),
+      "Le chemin doit être relatif (ne peut pas commencer par / ou \\)",
+    ),
   extensions: z.string().optional(),
   excludePatterns: z.string().optional(),
 });
