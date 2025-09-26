@@ -1,6 +1,8 @@
 import getPrismaClient from "../config/database.js";
 import { encryptCredentials, decryptCredentials } from "../utils/encryption.js";
 import { DriveConnectorFactory } from "../integrations/base/driveConnectorFactory.js";
+import ConversionService from "./conversionService.js";
+import config from "../config/env.js";
 
 const prisma = getPrismaClient();
 
@@ -326,38 +328,13 @@ class SourceService {
         data: { lastSync: new Date() },
       });
 
-      // Traiter les fichiers en arrière-plan (simulation pour l'instant)
-      setTimeout(async () => {
-        try {
-          // Ici on pourrait implémenter le téléchargement et la conversion réels
-          // Pour l'instant, on simule le traitement
-
-          await prisma.syncLog.update({
-            where: { id: syncLog.id },
-            data: {
-              status: "success",
-              message: `Sync completed - processed ${filteredFiles.length} files`,
-              details: JSON.stringify({
-                processedFiles: filteredFiles.length,
-                platform: source.platform,
-                completed: true,
-              }),
-            },
-          });
-
-          console.log(`✅ Sync completed for source: ${source.name}`);
-        } catch (error) {
-          await prisma.syncLog.update({
-            where: { id: syncLog.id },
-            data: {
-              status: "error",
-              message: `Sync failed: ${error.message}`,
-              details: JSON.stringify({ error: error.stack }),
-            },
-          });
-          console.error(`❌ Sync failed for source: ${source.name}`, error);
-        }
-      }, 1000);
+      // Traiter les fichiers réellement avec création de jobs de conversion
+      this.processFilesForConversion(
+        filteredFiles,
+        source,
+        connector,
+        syncLog.id,
+      );
 
       return {
         success: true,
@@ -505,6 +482,122 @@ class SourceService {
     } catch (error) {
       console.error("Error previewing Google Drive files:", error);
       throw error;
+    }
+  }
+
+  async processFilesForConversion(files, source, connector, syncLogId) {
+    const conversionService = new ConversionService();
+    let processedCount = 0;
+    let errorCount = 0;
+
+    try {
+      console.log(
+        `🔄 Starting conversion processing for ${files.length} files`,
+      );
+
+      // Traiter chaque fichier
+      for (const file of files) {
+        try {
+          // Vérifier si le fichier a déjà été traité récemment
+          const existingFile = await prisma.convertedFile.findFirst({
+            where: {
+              originalPath: file.path || file.id,
+              platform: source.platform,
+            },
+            orderBy: { createdAt: "desc" },
+          });
+
+          // Si le fichier existe et a été modifié récemment, passer
+          if (existingFile && file.modifiedTime) {
+            const fileModified = new Date(file.modifiedTime);
+            const lastProcessed = existingFile.createdAt;
+            if (fileModified <= lastProcessed) {
+              console.log(`⏭️  File ${file.name} already up to date, skipping`);
+              continue;
+            }
+          }
+
+          console.log(`📄 Processing file: ${file.name}`);
+
+          // Télécharger le fichier temporairement
+          const tempPath = await connector.downloadFile(
+            file.id,
+            config.tempPath,
+          );
+
+          // Créer un job de conversion
+          const job = await conversionService.createJob(
+            source.id,
+            file.name,
+            tempPath,
+            file.size,
+          );
+
+          console.log(`📋 Created conversion job for: ${file.name}`);
+
+          // Traiter le job immédiatement
+          await conversionService.processJob(job.id);
+
+          processedCount++;
+          console.log(`✅ Successfully converted: ${file.name}`);
+        } catch (error) {
+          errorCount++;
+          console.error(`❌ Failed to process file ${file.name}:`, error);
+
+          // Log de l'erreur pour ce fichier spécifique
+          await prisma.syncLog.create({
+            data: {
+              sourceId: source.id,
+              action: "file_process",
+              status: "error",
+              message: `Failed to process ${file.name}: ${error.message}`,
+              details: JSON.stringify({
+                fileName: file.name,
+                error: error.stack,
+              }),
+            },
+          });
+        }
+      }
+
+      // Mettre à jour le log de sync principal
+      await prisma.syncLog.update({
+        where: { id: syncLogId },
+        data: {
+          status: errorCount === 0 ? "success" : "partial_success",
+          message: `Sync completed - processed ${processedCount}/${files.length} files (${errorCount} errors)`,
+          details: JSON.stringify({
+            processedFiles: processedCount,
+            errorFiles: errorCount,
+            totalFiles: files.length,
+            platform: source.platform,
+            completed: true,
+          }),
+        },
+      });
+
+      console.log(
+        `✅ Processing completed for source: ${source.name} (${processedCount}/${files.length} files converted)`,
+      );
+    } catch (error) {
+      console.error(
+        `❌ Critical error during file processing for source ${source.name}:`,
+        error,
+      );
+
+      // Mettre à jour le log avec l'erreur critique
+      await prisma.syncLog.update({
+        where: { id: syncLogId },
+        data: {
+          status: "error",
+          message: `Sync failed: ${error.message}`,
+          details: JSON.stringify({
+            error: error.stack,
+            processedFiles: processedCount,
+            totalFiles: files.length,
+          }),
+        },
+      });
     }
   }
 }
