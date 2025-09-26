@@ -21,6 +21,10 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p /app/storage /app/temp /app/prisma
 
+# Fix pdf-parse debug mode by creating the test file it expects
+RUN mkdir -p /app/test/data
+RUN cp /app/node_modules/pdf-parse/test/data/05-versions-space.pdf /app/test/data/ 2>/dev/null || echo "Test file not found, creating dummy" && echo "%PDF-1.4 dummy" > /app/test/data/05-versions-space.pdf
+
 # Expose port
 EXPOSE 3000
 

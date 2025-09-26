@@ -154,6 +154,11 @@ REDIS_URL="redis://redis:6379"
 # Monitoring
 SYNC_INTERVAL_MINUTES=15
 LOG_LEVEL=info
+
+# File Export
+EXPORT_PATH="./exports"
+# Dossier racine accessible pour l'export - les sous-dossiers sont choisis dans l'UI
+# Exemples: /Users/dev/Documents, C:\Users\dev\Documents
 ```
 
 ## Testing Strategy
@@ -224,6 +229,23 @@ LOG_LEVEL=info
 - **Containerized workflow**: Development is primarily done via Docker
 - **Startup script**: `./start.sh` automates the complete rebuild/restart cycle
 - **Centralized configuration**: Single `.env` file at root for all services
+
+### File Export Configuration
+
+- **Export Path Architecture**: `EXPORT_PATH` définit le **dossier racine** accessible par Docker
+- **Interface utilisateur**: Dans `AddSourceDialog.tsx`, l'utilisateur choisit des **sous-dossiers spécifiques**
+- **Exemple de workflow**:
+  - Configuration: `EXPORT_PATH=/Users/dev/Documents`
+  - Formulaire: L'utilisateur saisit `mes-projets/doc2ai/exports`
+  - Résultat: Fichiers sauvés dans `/Users/dev/Documents/mes-projets/doc2ai/exports`
+
+- **Configurations recommandées**:
+  - **Développement**: `./exports` (dossier dans le projet)
+  - **Production**: `/Users/username/Documents` (accès complet au dossier Documents)
+  - **Équipe**: `/workspace/shared` (dossier partagé)
+
+- **Docker volume**: Le chemin est automatiquement monté comme volume bind mount
+- **Sécurité**: L'application n'a accès qu'au dossier configuré et ses sous-dossiers
 
 ### Development URLs
 
