@@ -1,6 +1,7 @@
 /**
  * Middleware de validation des données
  */
+import { validateDestinationPath } from "../utils/configParser.js";
 
 /**
  * Valide les données de création d'une source
@@ -50,9 +51,17 @@ export function validateSourceData(req, res, next) {
       if (!refreshToken) errors.push("Google refreshToken is required");
     }
 
-    // Validation de la destination (maintenant un string)
-    if (config.destination && typeof config.destination !== "string") {
-      errors.push("Config.destination must be a string");
+    // Validation de la destination avec sécurité
+    if (config.destination) {
+      if (typeof config.destination !== "string") {
+        errors.push("Config.destination must be a string");
+      } else {
+        try {
+          validateDestinationPath(config.destination);
+        } catch (error) {
+          errors.push(`Invalid destination: ${error.message}`);
+        }
+      }
     }
   }
 
