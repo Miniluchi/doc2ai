@@ -24,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle, FileText, FolderOpen, Loader2, Plus } from "lucide-react";
 import React, { useState } from "react";
@@ -64,7 +63,7 @@ const sourceFormSchema = z.object({
   }),
   sourcePath: z.string().min(1, "Indiquez le dossier à surveiller"),
   siteUrl: z.string().url("URL invalide").optional().or(z.literal("")),
-  destinations: z.string().min(1, "Où voulez-vous sauvegarder vos fichiers ?"),
+  destination: z.string().min(1, "Où voulez-vous sauvegarder vos fichiers ?"),
   extensions: z.string().optional(),
   excludePatterns: z.string().optional(),
 });
@@ -99,7 +98,7 @@ export function AddSourceDialog({
       platform: undefined,
       sourcePath: "/",
       siteUrl: "",
-      destinations: "",
+      destination: "",
       extensions: ".docx,.pdf,.doc,.txt",
       excludePatterns: "temp,~$,draft",
     },
@@ -159,11 +158,8 @@ export function AddSourceDialog({
         };
       }
 
-      // Préparer les destinations
-      const destinations = data.destinations
-        .split(",")
-        .map((d) => d.trim())
-        .filter((d) => d.length > 0);
+      // Préparer la destination (string directe)
+      const destination = data.destination.trim();
 
       // Préparer les filtres
       const extensions = data.extensions
@@ -185,7 +181,7 @@ export function AddSourceDialog({
           sourcePath: data.sourcePath,
           ...(data.platform === "sharepoint" &&
             data.siteUrl && { siteUrl: data.siteUrl }),
-          destinations,
+          destination,
           filters: {
             extensions,
             excludePatterns,
@@ -448,22 +444,18 @@ export function AddSourceDialog({
 
                   <FormField
                     control={form.control}
-                    name="destinations"
+                    name="destination"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
                           Où sauvegarder les fichiers convertis
                         </FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="/Users/john/Documents/markdown, /workspace/docs"
-                            className="resize-none"
-                            {...field}
-                          />
+                          <Input placeholder="doc2ai exports" {...field} />
                         </FormControl>
                         <FormDescription>
-                          Dossiers locaux où copier les fichiers convertis
-                          (séparés par des virgules)
+                          Dossier relatif à votre EXPORT_PATH où copier les
+                          fichiers convertis. Exemple : "doc2ai exports"
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
