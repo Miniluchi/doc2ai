@@ -3,6 +3,10 @@ import { ConverterFactory } from "../converters/converterFactory.js";
 import path from "path";
 import fs from "fs-extra";
 import config from "../config/env.js";
+import {
+  enrichSourceWithConfig,
+  getValidatedDestination,
+} from "../utils/configParser.js";
 
 const prisma = getPrismaClient();
 
@@ -54,13 +58,9 @@ class ConversionService {
         throw new Error("Conversion job not found");
       }
 
-      // Parse la config JSON si elle existe
-      if (job.source && job.source.config) {
-        console.log("🔍 Raw config before parsing:", job.source.config);
-        job.source.config = JSON.parse(job.source.config);
-        console.log("🔍 Parsed config:", job.source.config);
-        console.log("🔍 Config keys:", Object.keys(job.source.config));
-        console.log("🔍 Destination value:", job.source.config.destination);
+      // Parse et valide la configuration de la source
+      if (job.source) {
+        job.source = enrichSourceWithConfig(job.source);
       }
 
       return job;
@@ -85,18 +85,9 @@ class ConversionService {
         },
       });
 
-      // Parse la config JSON si elle existe
-      if (job.source && job.source.config) {
-        console.log(
-          "🔍 Raw config before parsing (createJob):",
-          job.source.config,
-        );
-        job.source.config = JSON.parse(job.source.config);
-        console.log("🔍 Parsed config (createJob):", job.source.config);
-        console.log(
-          "🔍 Destination value (createJob):",
-          job.source.config.destination,
-        );
+      // Parse et valide la configuration de la source
+      if (job.source) {
+        job.source = enrichSourceWithConfig(job.source);
       }
 
       console.log(`📋 Conversion job created: ${fileName}`);
@@ -148,19 +139,18 @@ class ConversionService {
       await fs.ensureDir(config.storagePath);
       await fs.ensureDir(config.tempPath);
 
-      // Définir le chemin de sortie
+      // Définir le chemin de sortie avec destination validée
       const outputFileName = path.basename(job.fileName, fileExtension) + ".md";
-      const destinationFolder =
-        job.source.config.destination || job.source.name;
+      const destinationFolder = getValidatedDestination(
+        job.source.config,
+        job.source.name,
+      );
       const outputPath = path.join(
         config.storagePath,
         destinationFolder,
         outputFileName,
       );
 
-      console.log(
-        `📁 Using storage destination: "${destinationFolder}" (from config.destination: "${job.source.config.destination}")`,
-      );
       await fs.ensureDir(path.dirname(outputPath));
 
       // Mettre à jour le progrès
@@ -184,11 +174,10 @@ class ConversionService {
       try {
         await fs.ensureDir(config.exportPath);
 
-        // Récupérer la destination configurée (string uniquement)
-        const destination = job.source.config.destination || job.source.name;
-
-        console.log(
-          `📁 Using destination: "${destination}" (from destination: "${job.source.config.destination}")`,
+        // Récupérer et valider la destination configurée
+        const destination = getValidatedDestination(
+          job.source.config,
+          job.source.name,
         );
 
         const exportFilePath = path.join(
