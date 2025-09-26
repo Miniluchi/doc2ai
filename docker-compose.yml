@@ -23,12 +23,14 @@ services:
       - REDIS_URL=${REDIS_URL}
       - STORAGE_PATH=/app/storage
       - TEMP_PATH=/app/temp
+      - EXPORT_PATH=/app/exports
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-15}
     volumes:
       - backend_storage:/app/storage
       - backend_temp:/app/temp
       - backend_db:/app/prisma
+      - ${EXPORT_PATH:-./exports}:/app/exports
     depends_on:
       - redis
     networks:
