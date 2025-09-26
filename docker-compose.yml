@@ -48,6 +48,7 @@ services:
         - VITE_DEFAULT_MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
         - VITE_DEFAULT_MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
         - VITE_DEFAULT_MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
+        - VITE_EXPORT_PATH=${EXPORT_PATH}
     container_name: doc2ai-frontend
     restart: unless-stopped
     ports:
