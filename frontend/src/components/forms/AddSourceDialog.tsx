@@ -261,65 +261,69 @@ export function AddSourceDialog({
                 <h3 className="text-lg font-medium">Informations de base</h3>
               </div>
 
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom de votre source</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="ex: Documents équipe, Guides utilisateur..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Un nom pour reconnaître facilement cette source
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex flex-col md:flex-row gap-6">
+                <FormField
+                  control={form.control}
+                  name="platform"
+                  render={({ field }) => (
+                    <FormItem className="">
+                      <FormLabel>Plateforme de stockage</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Où sont stockés vos documents ?" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="googledrive">
+                            <span className="flex items-center gap-2">
+                              <GoogleDriveIcon className="w-4 h-4" /> Google
+                              Drive
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="sharepoint">
+                            <span className="flex items-center gap-2">
+                              <SharePointIcon className="w-4 h-4" />
+                              Microsoft SharePoint
+                            </span>
+                          </SelectItem>
+                          <SelectItem value="onedrive">
+                            <span className="flex items-center gap-2">
+                              <OneDriveIcon className="w-4 h-4" />
+                              Microsoft OneDrive
+                            </span>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="platform"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Plateforme de stockage</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                <div className="hidden md:flex items-center justify-center pt-6">
+                  <div className="w-px h-16 bg-border"></div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Nom de votre source</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Où sont stockés vos documents ?" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="ex: Documents équipe, Guides utilisateur..."
+                          {...field}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="googledrive">
-                          <span className="flex items-center gap-2">
-                            <GoogleDriveIcon className="w-4 h-4" /> Google Drive
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="sharepoint">
-                          <span className="flex items-center gap-2">
-                            <SharePointIcon className="w-4 h-4" />
-                            Microsoft SharePoint
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="onedrive">
-                          <span className="flex items-center gap-2">
-                            <OneDriveIcon className="w-4 h-4" />
-                            Microsoft OneDrive
-                          </span>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* 2. Connexion à la plateforme */}
@@ -466,11 +470,20 @@ export function AddSourceDialog({
                           Où sauvegarder les fichiers convertis
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="doc2ai exports" {...field} />
+                          <div className="flex items-center">
+                            <div className="px-3 py-2 bg-muted border border-r-0 rounded-l-md text-sm text-muted-foreground font-mono">
+                              {import.meta.env.VITE_EXPORT_PATH || "./exports"}/
+                            </div>
+                            <Input
+                              placeholder="doc2ai-exports"
+                              {...field}
+                              className="rounded-l-none border-l-0"
+                            />
+                          </div>
                         </FormControl>
                         <FormDescription>
                           Dossier relatif à votre EXPORT_PATH où copier les
-                          fichiers convertis. Exemple : "doc2ai exports"
+                          fichiers convertis. Exemple : "doc2ai-exports"
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
