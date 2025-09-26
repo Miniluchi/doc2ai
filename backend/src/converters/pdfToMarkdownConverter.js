@@ -313,11 +313,8 @@ class PdfToMarkdownConverter extends BaseConverter {
    */
   async extractMetadata(filePath) {
     try {
-      // Import dynamique de pdf-parse
-      const pdf = (await import("pdf-parse")).default;
-
       const dataBuffer = await fs.readFile(filePath);
-      const pdfData = await pdf(dataBuffer);
+      const pdfData = await pdfParse(dataBuffer);
 
       return {
         pages: pdfData.numpages,
