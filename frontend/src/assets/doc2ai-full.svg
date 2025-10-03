@@ -1,0 +1,29 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg" fill="none">
+ <defs>
+  <filter id="glow">
+   <feGaussianBlur result="coloredBlur" stdDeviation="2.5"/>
+  </filter>
+  <linearGradient y2="100%" x2="100%" y1="0%" x1="0%" id="blueGradient">
+   <stop stop-color="#4a90e2" offset="0%"/>
+   <stop stop-color="#357abd" offset="100%"/>
+  </linearGradient>
+  <linearGradient y2="100%" x2="100%" y1="0%" x1="0%" id="greenGradient">
+   <stop stop-color="#2ecc71" offset="0%"/>
+   <stop stop-color="#27ae60" offset="100%"/>
+  </linearGradient>
+  <linearGradient y2="100%" x2="100%" y1="0%" x1="0%" id="foldGradient">
+   <stop stop-color="#357abd" offset="0%"/>
+   <stop stop-color="#2c6297" offset="100%"/>
+  </linearGradient>
+ </defs>
+ <g>
+  <title>Layer 1</title>
+  <g id="svg_9">
+   <path id="svg_1" fill="url(#blueGradient)" d="m455.5,68.91664l0,374.16671a39.9,37.41667 0 0 1 -39.9,37.41667l-319.19999,0a39.9,37.41667 0 0 1 -39.9,-37.41667l0,-374.16671a39.9,37.41667 0 0 1 39.9,-37.41667l279.29999,0l79.8,74.83334l0,-37.41667z" stroke="null"/>
+   <path id="svg_2" fill="url(#greenGradient)" d="m55.81037,443.08335a39.9,37.41667 0 0 0 39.9,37.41667l319.19999,0a39.9,37.41667 0 0 0 39.9,-37.41667l0,-261.9167l-398.99998,112.25001l0,149.66668l-0.00001,0.00001z" stroke="null"/>
+   <path id="svg_3" fill="url(#foldGradient)" d="m375.7,31.49997l0,74.83334l79.8,0l-79.8,-74.83334z" stroke="null"/>
+   <path id="svg_4" stroke-linecap="round" filter="url(#glow)" stroke-width="2" d="m56.50002,293.41667l398.99998,-112.25001" stroke="#5dade2"/>
+   <text id="svg_5" text-anchor="middle" fill="white" font-weight="bold" font-size="120" font-family="'Epilogue'" y="412.65193" x="293.75922" transform="matrix(1.24687 0 0 1.16927 -67.4531 -48.3412)" stroke="null">md</text>
+  </g>
+ </g>
+</svg>
