@@ -14,12 +14,12 @@ import {
   AlertCircle,
   Cloud,
   Download,
-  FileText,
   Plus,
   Settings,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import "./App.css";
+import Doc2aiLogoUrl from "./assets/doc2ai-full.svg";
 import { SourceCard } from "./components/dashboard/SourceCard";
 import { AddSourceDialog } from "./components/forms/AddSourceDialog";
 import { useConversionStats } from "./hooks/useConversions";
@@ -77,7 +77,7 @@ function App() {
       <header className="border-b">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="h-8 w-8 text-primary" />
+            <img src={Doc2aiLogoUrl} className="h-8 w-8" alt="Doc2AI logo" />
             <h1 className="text-2xl font-bold">Doc2AI</h1>
             <Badge variant="secondary">Self-hosted</Badge>
           </div>

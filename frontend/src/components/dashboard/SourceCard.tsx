@@ -112,7 +112,6 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
   };
 
   const getPlatformIcon = (_platform: string) => {
-    // Vous pourriez ajouter des icônes spécifiques par plateforme ici
     return <Cloud className="h-5 w-5 text-blue-500" />;
   };
 
@@ -132,7 +131,8 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Jamais";
     try {
-      return format(new Date(dateString), "PPp", { locale: fr });
+      const date = new Date(dateString);
+      return format(date, "PPp", { locale: fr });
     } catch {
       return "Date invalide";
     }
@@ -251,7 +251,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Dernière sync:</span>
+                <span>Dernière sync réussie:</span>
               </div>
               <span className="text-xs">{formatDate(source.lastSync)}</span>
             </div>
