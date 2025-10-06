@@ -7,71 +7,82 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+
 }
 
 model Source {
-  id            String   @id @default(cuid())
-  name          String
-  platform      String   // 'sharepoint', 'googledrive', 'onedrive'
-  config        String   // JSON stringified - Credentials, paths, filters
-  status        String   @default("inactive") // 'active', 'inactive', 'error'
-  lastSync      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  id        String    @id @default(cuid())
+  name      String
+  platform  String // 'sharepoint', 'googledrive', 'onedrive'
+  config    String // JSON stringified - Credentials, paths, filters
+  status    String    @default("inactive") // 'active', 'inactive', 'error'
+  lastSync  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
   // Relations
-  jobs          ConversionJob[]
-  syncLogs      SyncLog[]
-  
+  jobs     ConversionJob[]
+  syncLogs SyncLog[]
+
   @@map("sources")
 }
 
 model ConversionJob {
-  id            String   @id @default(cuid())
-  sourceId      String
-  fileName      String
-  filePath      String   // Chemin original dans le drive
-  outputPath    String?  // Chemin du fichier converti
-  fileSize      Int?     // Taille du fichier en bytes
-  status        String   @default("pending") // 'pending', 'processing', 'completed', 'failed'
-  progress      Int      @default(0) // 0-100
-  error         String?
-  startedAt     DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
-  
+  id          String    @id @default(cuid())
+  sourceId    String
+  fileName    String
+  filePath    String // Chemin original dans le drive
+  outputPath  String? // Chemin du fichier converti
+  fileSize    Int? // Taille du fichier en bytes
+  status      String    @default("pending") // 'pending', 'processing', 'completed', 'failed'
+  progress    Int       @default(0) // 0-100
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
   // Relations
-  source        Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  // Index pour améliorer les performances
+  @@index([status, createdAt])
+  @@index([sourceId, status])
+  @@index([createdAt])
   @@map("conversion_jobs")
 }
 
 model SyncLog {
-  id            String   @id @default(cuid())
-  sourceId      String
-  action        String   // 'scan', 'download', 'convert', 'sync'
-  status        String   // 'success', 'error', 'warning'
-  message       String
-  details       String?  // Additional data - JSON stringified
-  createdAt     DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  sourceId  String
+  action    String // 'scan', 'download', 'convert', 'sync'
+  status    String // 'success', 'error', 'warning'
+  message   String
+  details   String? // Additional data - JSON stringified
+  createdAt DateTime @default(now())
+
   // Relations
-  source        Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  // Index pour améliorer les performances
+  @@index([sourceId, createdAt])
+  @@index([status, createdAt])
   @@map("sync_logs")
 }
 
 model ConvertedFile {
   id            String   @id @default(cuid())
-  originalPath  String   // Chemin original dans le drive
-  convertedPath String   // Chemin local du fichier converti
+  originalPath  String // Chemin original dans le drive
+  convertedPath String // Chemin local du fichier converti
   fileName      String
-  fileType      String   // Extension du fichier original
-  platform      String   // Source platform
-  checksum      String   // Hash du fichier pour détecter les changements
+  fileType      String // Extension du fichier original
+  platform      String // Source platform
+  checksum      String // Hash du fichier pour détecter les changements
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+
+  // Index pour améliorer les performances et garantir l'unicité
+  @@unique([originalPath, platform])
+  @@index([platform, createdAt])
+  @@index([checksum])
   @@map("converted_files")
 }
