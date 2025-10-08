@@ -1,7 +1,10 @@
 import BaseConverter from "./baseConverter.js";
+import { createRequire } from "module";
 import fs from "fs-extra";
 import path from "path";
-import pdfParse from "pdf-parse";
+
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 
 /**
  * Convertisseur de fichiers PDF vers Markdown
