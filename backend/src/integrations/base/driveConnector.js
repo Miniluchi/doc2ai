@@ -4,8 +4,8 @@
  */
 class DriveConnector {
   constructor(config) {
-    this.config = config
-    this.isAuthenticated = false
+    this.config = config;
+    this.isAuthenticated = false;
   }
 
   /**
@@ -13,7 +13,7 @@ class DriveConnector {
    * @returns {Promise<boolean>} - True si l'authentification réussit
    */
   async authenticate() {
-    throw new Error('authenticate() method must be implemented by subclass')
+    throw new Error("authenticate() method must be implemented by subclass");
   }
 
   /**
@@ -21,7 +21,7 @@ class DriveConnector {
    * @returns {Promise<{success: boolean, message: string, details?: object}>}
    */
   async testConnection() {
-    throw new Error('testConnection() method must be implemented by subclass')
+    throw new Error("testConnection() method must be implemented by subclass");
   }
 
   /**
@@ -29,8 +29,8 @@ class DriveConnector {
    * @param {string} path - Chemin du répertoire à lister
    * @returns {Promise<Array<{id: string, name: string, path: string, size: number, modifiedTime: Date, checksum?: string}>>}
    */
-  async listFiles(path = '/') {
-    throw new Error('listFiles() method must be implemented by subclass')
+  async listFiles(path = "/") {
+    throw new Error("listFiles() method must be implemented by subclass");
   }
 
   /**
@@ -40,7 +40,7 @@ class DriveConnector {
    * @returns {Promise<string>} - Chemin du fichier téléchargé
    */
   async downloadFile(fileId, destinationPath) {
-    throw new Error('downloadFile() method must be implemented by subclass')
+    throw new Error("downloadFile() method must be implemented by subclass");
   }
 
   /**
@@ -50,7 +50,7 @@ class DriveConnector {
    * @returns {Promise<void>}
    */
   async watchForChanges(path, callback) {
-    throw new Error('watchForChanges() method must be implemented by subclass')
+    throw new Error("watchForChanges() method must be implemented by subclass");
   }
 
   /**
@@ -68,14 +68,14 @@ class DriveConnector {
    */
   validateConfig() {
     if (!this.config) {
-      throw new Error('Configuration is required')
+      throw new Error("Configuration is required");
     }
 
     if (!this.config.credentials) {
-      throw new Error('Credentials are required')
+      throw new Error("Credentials are required");
     }
 
-    return true
+    return true;
   }
 
   /**
@@ -86,13 +86,16 @@ class DriveConnector {
   normalizeFileInfo(rawFile) {
     return {
       id: rawFile.id,
-      name: rawFile.name || 'Unknown',
+      name: rawFile.name || "Unknown",
       path: rawFile.path || rawFile.name,
       size: rawFile.size || 0,
-      modifiedTime: rawFile.modifiedTime ? new Date(rawFile.modifiedTime) : new Date(),
+      modifiedTime: rawFile.modifiedTime
+        ? new Date(rawFile.modifiedTime)
+        : new Date(),
       checksum: rawFile.checksum || rawFile.md5Checksum || null,
-      platform: this.constructor.name.replace('Connector', '').toLowerCase()
-    }
+      mimeType: rawFile.mimeType || null,
+      platform: this.constructor.name.replace("Connector", "").toLowerCase(),
+    };
   }
 
   /**
@@ -102,15 +105,15 @@ class DriveConnector {
    * @throws {Error} - Erreur enrichie
    */
   handleApiError(error, operation) {
-    console.error(`${this.constructor.name} ${operation} failed:`, error)
-    
+    console.error(`${this.constructor.name} ${operation} failed:`, error);
+
     // Enrichir l'erreur avec des informations contextuelles
-    const enrichedError = new Error(`${operation} failed: ${error.message}`)
-    enrichedError.originalError = error
-    enrichedError.operation = operation
-    enrichedError.connector = this.constructor.name
-    
-    throw enrichedError
+    const enrichedError = new Error(`${operation} failed: ${error.message}`);
+    enrichedError.originalError = error;
+    enrichedError.operation = operation;
+    enrichedError.connector = this.constructor.name;
+
+    throw enrichedError;
   }
 
   /**
@@ -119,8 +122,8 @@ class DriveConnector {
    * @param {object} details - Détails de l'opération
    */
   log(operation, details = {}) {
-    console.log(`[${this.constructor.name}] ${operation}:`, details)
+    console.log(`[${this.constructor.name}] ${operation}:`, details);
   }
 }
 
-export default DriveConnector
+export default DriveConnector;

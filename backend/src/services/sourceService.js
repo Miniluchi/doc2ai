@@ -250,100 +250,16 @@ class SourceService {
 
   async syncSource(id) {
     try {
-      const source = await this.getSourceById(id);
+      // Importer dynamiquement pour éviter les dépendances circulaires
+      const monitoringService = (await import("./monitoringService.js"))
+        .default;
 
-      if (source.status !== "active") {
-        throw new Error("Source must be active to sync");
-      }
-
-      console.log(`🔄 Starting sync for source: ${source.name}`);
-
-      // Déchiffrer les credentials pour la synchronisation
-      const decryptedConfig = {
-        ...source.config,
-        credentials: source.config.credentials
-          ? decryptCredentials(source.config.credentials)
-          : null,
-      };
-
-      // Créer le connecteur approprié
-      const connector = DriveConnectorFactory.createConnector(
-        source.platform,
-        decryptedConfig,
-      );
-
-      // Lister les fichiers de la source
-      console.log(`📁 Listing files from ${source.platform}...`);
-
-      // Pour Google Drive, utiliser "root" au lieu de "/"
-      let sourcePath = decryptedConfig.sourcePath || "/";
-      if (source.platform === "googledrive") {
-        sourcePath =
-          sourcePath === "/" || sourcePath === "" ? "root" : sourcePath;
-      }
-
-      const files = await connector.listFiles(sourcePath, 50);
-
-      console.log(`📄 Found ${files.length} files to process`);
-
-      // Filtrer selon les extensions autorisées
-      // Filtrer selon les extensions autorisées
-      const allowedExtensions = Array.isArray(
-        decryptedConfig.filters?.extensions,
-      )
-        ? decryptedConfig.filters.extensions
-        : [".docx", ".pdf", ".doc"];
-
-      console.log(`🔍 Filtering with extensions:`, allowedExtensions);
-
-      const filteredFiles = files.filter((file) => {
-        const fileExt = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
-        const isAllowed = fileExt && allowedExtensions.includes(fileExt);
-        console.log(
-          `📄 File: ${file.name} (${fileExt}) -> ${isAllowed ? "INCLUDED" : "EXCLUDED"}`,
-        );
-        return isAllowed;
-      });
-
-      console.log(`✅ ${filteredFiles.length} files match the filters`);
-
-      // Créer un log de synchronisation
-      const syncLog = await prisma.syncLog.create({
-        data: {
-          sourceId: id,
-          action: "manual_sync",
-          status: "in_progress",
-          message: `Starting sync - ${filteredFiles.length} files to process`,
-          details: JSON.stringify({
-            totalFiles: files.length,
-            filteredFiles: filteredFiles.length,
-            platform: source.platform,
-          }),
-        },
-      });
-
-      // Mettre à jour le timestamp de dernière sync
-      await prisma.source.update({
-        where: { id },
-        data: { lastSync: new Date() },
-      });
-
-      // Traiter les fichiers réellement avec création de jobs de conversion
-      this.processFilesForConversion(
-        filteredFiles,
-        source,
-        connector,
-        syncLog.id,
-      );
+      // Utiliser la méthode de synchronisation du monitoring service
+      await monitoringService.syncSource(id);
 
       return {
         success: true,
-        message: `Sync started for ${filteredFiles.length} files`,
-        details: {
-          totalFiles: files.length,
-          filesToProcess: filteredFiles.length,
-          syncLogId: syncLog.id,
-        },
+        message: "Sync completed successfully",
       };
     } catch (error) {
       console.error("Sync failed:", error);
@@ -453,13 +369,53 @@ class SourceService {
 
       const files = await connector.listFiles(folderId);
 
-      // Filtrer par extensions
+      console.log(
+        `📋 Files found in folder ${folderId}:`,
+        files.map((f) => ({
+          name: f.name,
+          mimeType: f.mimeType,
+        })),
+      );
+
+      // Filtrer par extensions OU par mimeType (pour Google Docs natifs)
       const filteredFiles = files.filter((file) => {
-        if (!file.name) return false;
-        const fileExt = file.name.toLowerCase().split(".").pop();
-        return extensionsArray.some((ext) =>
-          ext.toLowerCase().includes(fileExt),
+        if (!file.name) {
+          console.log("❌ File without name, skipping");
+          return false;
+        }
+        const fileName = file.name.toLowerCase();
+        const mimeType = file.mimeType || "";
+
+        // 1. Vérifier si c'est un Google Doc natif (à convertir en DOCX)
+        const isGoogleDoc = mimeType === "application/vnd.google-apps.document";
+        const isGoogleSheet =
+          mimeType === "application/vnd.google-apps.spreadsheet";
+        const isGoogleSlide =
+          mimeType === "application/vnd.google-apps.presentation";
+
+        if (isGoogleDoc || isGoogleSheet || isGoogleSlide) {
+          console.log(
+            `✅ Google native file "${file.name}" (${mimeType}) - will be exported as DOCX/PDF`,
+          );
+          return true;
+        }
+
+        // 2. Vérifier si le fichier se termine par une des extensions autorisées
+        const matches = extensionsArray.some((ext) => {
+          const extension = ext.toLowerCase().startsWith(".")
+            ? ext.toLowerCase()
+            : `.${ext.toLowerCase()}`;
+          const endsWith = fileName.endsWith(extension);
+          console.log(
+            `  Checking "${fileName}" ends with "${extension}": ${endsWith}`,
+          );
+          return endsWith;
+        });
+
+        console.log(
+          `${matches ? "✅" : "❌"} File "${file.name}" - matches: ${matches}`,
         );
+        return matches;
       });
 
       await connector.cleanup();
