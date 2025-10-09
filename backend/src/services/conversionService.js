@@ -122,8 +122,8 @@ class ConversionService {
 
       console.log(`🔄 Processing job: ${job.fileName}`);
 
-      // Déterminer le type de fichier
-      const fileExtension = path.extname(job.fileName).toLowerCase();
+      // Déterminer le type de fichier depuis le chemin téléchargé (pas fileName qui peut ne pas avoir d'extension pour Google Docs)
+      const fileExtension = path.extname(job.filePath).toLowerCase();
 
       // Obtenir le convertisseur approprié
       const converter = ConverterFactory.getConverter(fileExtension);
