@@ -55,7 +55,7 @@ const config = {
   // Rate limiting
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // requests per windowMs
+    max: 1000, // requests per windowMs
   },
 };
 

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { createRequire } from 'module'
 
 const require = createRequire(import.meta.url)
@@ -9,7 +10,9 @@ let prisma
 // Singleton pattern pour la connexion Prisma
 function getPrismaClient() {
   if (!prisma) {
+    const adapter = new PrismaBetterSqlite3(process.env.DATABASE_URL);
     prisma = new PrismaClient({
+      adapter,
       log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
     })
   }

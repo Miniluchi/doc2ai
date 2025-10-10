@@ -1,6 +1,51 @@
+# Dependencies
 node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
 .env
+.env.local
+.env.*.local
 DS_Store
-prisma/migrations
+
+# Database
 *.db
-$.db-journal
+*.db-journal
+prisma/migrations/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build
+dist/
+build/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temp files
+temp/
+tmp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test fixtures (should be created locally)
+src/tests/fixtures/*.docx
+src/tests/fixtures/*.pdf
+src/tests/fixtures/*.doc
+!src/tests/fixtures/README.md
+!src/tests/fixtures/sample.docx
