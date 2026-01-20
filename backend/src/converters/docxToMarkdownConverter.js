@@ -57,7 +57,7 @@ class DocxToMarkdownConverter extends BaseConverter {
         convertImage: mammoth.images.imgElement(async (image) => {
           // Convertir les images en références Markdown
           // En production, vous pourriez vouloir sauvegarder les images
-          const imageBuffer = await image.read();
+          await image.read();
           const imageName = `image_${Date.now()}.${image.contentType.split("/")[1] || "png"}`;
 
           // Pour l'instant, juste retourner une référence

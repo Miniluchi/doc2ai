@@ -52,7 +52,7 @@ class MonitoringService {
       console.log("🛑 Stopping monitoring service...");
 
       // Arrêter tous les monitors actifs
-      for (const [sourceId, monitor] of this.activeMonitors) {
+      for (const [sourceId] of this.activeMonitors) {
         await this.stopSourceMonitoring(sourceId);
       }
 
@@ -205,7 +205,6 @@ class MonitoringService {
     try {
       const monitor = this.activeMonitors.get(sourceId);
       let source, connector;
-      let shouldCleanupConnector = false;
 
       if (!monitor) {
         // Sync manuelle : créer un connecteur temporaire
@@ -242,7 +241,6 @@ class MonitoringService {
           decryptedConfig,
         );
         await connector.authenticate();
-        shouldCleanupConnector = true;
       } else {
         // Sync automatique : utiliser le connecteur du monitor
         source = monitor.source;

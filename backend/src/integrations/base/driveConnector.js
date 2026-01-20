@@ -29,7 +29,7 @@ class DriveConnector {
    * @param {string} path - Chemin du répertoire à lister
    * @returns {Promise<Array<{id: string, name: string, path: string, size: number, modifiedTime: Date, checksum?: string}>>}
    */
-  async listFiles(path = "/") {
+  async listFiles(_path = "/") {
     throw new Error("listFiles() method must be implemented by subclass");
   }
 
@@ -39,7 +39,7 @@ class DriveConnector {
    * @param {string} destinationPath - Chemin de destination local
    * @returns {Promise<string>} - Chemin du fichier téléchargé
    */
-  async downloadFile(fileId, destinationPath) {
+  async downloadFile(_fileId, _destinationPath) {
     throw new Error("downloadFile() method must be implemented by subclass");
   }
 
@@ -49,7 +49,7 @@ class DriveConnector {
    * @param {Function} callback - Fonction appelée lors de changements
    * @returns {Promise<void>}
    */
-  async watchForChanges(path, callback) {
+  async watchForChanges(_path, _callback) {
     throw new Error("watchForChanges() method must be implemented by subclass");
   }
 

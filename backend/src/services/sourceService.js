@@ -190,7 +190,7 @@ class SourceService {
         success: false,
         message: error.message || "Test des identifiants échoué",
         details: {
-          platform,
+          platform: testData.platform,
           error: error.name || "Unknown error",
         },
       };

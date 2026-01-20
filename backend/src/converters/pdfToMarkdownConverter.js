@@ -150,6 +150,7 @@ class PdfToMarkdownConverter extends BaseConverter {
     let cleaned = text;
 
     // Supprimer les caractères de contrôle étranges
+    // eslint-disable-next-line no-control-regex
     cleaned = cleaned.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, "");
 
     // Corriger les sauts de ligne

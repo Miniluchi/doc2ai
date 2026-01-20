@@ -225,7 +225,7 @@ class ConversionService {
       console.error(`❌ Job failed: ${job?.fileName || jobId}`, error);
 
       // Marquer comme échoué
-      const failedJob = await prisma.conversionJob
+      await prisma.conversionJob
         .update({
           where: { id: jobId },
           data: {
@@ -298,7 +298,6 @@ class ConversionService {
 
       // Note: Prisma ne supporte pas directement la différence de dates
       // On skip cette partie pour éviter l'erreur
-      const avgProcessingTime = null;
 
       return {
         byStatus: stats.reduce((acc, stat) => {
