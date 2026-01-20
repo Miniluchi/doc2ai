@@ -30,18 +30,7 @@ import AuthCallback from "./pages/AuthCallback";
 function App() {
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Détecter si on est sur la page de callback OAuth
-  const isAuthCallback =
-    window.location.pathname === "/auth/callback" ||
-    window.location.search.includes("success=true") ||
-    window.location.search.includes("data=");
-
-  // Si on est sur la page de callback, afficher seulement le composant AuthCallback
-  if (isAuthCallback) {
-    return <AuthCallback />;
-  }
-
-  // Hooks pour les données
+  // Hooks pour les données - DOIVENT être appelés avant tout return conditionnel
   const {
     sources,
     loading: sourcesLoading,
@@ -58,6 +47,17 @@ function App() {
       refetchSources();
     }
   }, [refreshKey, refetchSources]);
+
+  // Détecter si on est sur la page de callback OAuth
+  const isAuthCallback =
+    window.location.pathname === "/auth/callback" ||
+    window.location.search.includes("success=true") ||
+    window.location.search.includes("data=");
+
+  // Si on est sur la page de callback, afficher seulement le composant AuthCallback
+  if (isAuthCallback) {
+    return <AuthCallback />;
+  }
 
   const handleSourceAdded = () => {
     setRefreshKey((prev) => prev + 1);
