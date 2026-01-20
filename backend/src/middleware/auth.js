@@ -81,10 +81,11 @@ export function optionalAuth(req, res, next) {
 /**
  * Génère un JWT pour les tests (fonction utilitaire)
  */
-export function generateTestToken(
-  payload = { userId: "test-user", role: "admin" },
-) {
-  return jwt.sign(payload, config.jwtSecret, {
+const DEFAULT_TEST_PAYLOAD = { userId: "test-user", role: "admin" };
+
+export function generateTestToken(payload) {
+  const tokenPayload = payload || DEFAULT_TEST_PAYLOAD;
+  return jwt.sign(tokenPayload, config.jwtSecret, {
     expiresIn: "24h",
     issuer: "doc2ai-backend",
     audience: "doc2ai-frontend",
