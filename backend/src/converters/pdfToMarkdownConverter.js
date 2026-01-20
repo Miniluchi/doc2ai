@@ -1,14 +1,11 @@
 import BaseConverter from "./baseConverter.js";
-import { createRequire } from "module";
+import { PDFParse } from "pdf-parse";
 import fs from "fs-extra";
 import path from "path";
 
-const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
-
 /**
  * Convertisseur de fichiers PDF vers Markdown
- * Utilise pdf-parse pour l'extraction de texte
+ * Utilise pdf-parse v2 pour l'extraction de texte
  */
 class PdfToMarkdownConverter extends BaseConverter {
   constructor() {
@@ -24,6 +21,8 @@ class PdfToMarkdownConverter extends BaseConverter {
    * @returns {Promise<{success: boolean, message?: string, checksum?: string, error?: string}>}
    */
   async convert(inputPath, outputPath) {
+    let parser = null;
+
     try {
       this.log("convert", { inputPath, outputPath });
       this.updateProgress(10, "Validating input file");
@@ -43,41 +42,22 @@ class PdfToMarkdownConverter extends BaseConverter {
 
       this.updateProgress(40, "Parsing PDF content");
 
-      // Options pour pdf-parse
-      const options = {
-        // Personnaliser le rendu si nécessaire
-        pagerender: async (pageData) => {
-          // Cette fonction peut être utilisée pour traiter chaque page individuellement
-          let renderOptions = {
-            normalizeWhitespace: false,
-            disableCombineTextItems: false,
-          };
+      // Créer le parser pdf-parse v2
+      parser = new PDFParse({ data: dataBuffer });
 
-          return pageData.getTextContent(renderOptions).then((textContent) => {
-            let lastY,
-              text = "";
-
-            for (let item of textContent.items) {
-              if (lastY == item.transform[5] || !lastY) {
-                text += item.str;
-              } else {
-                text += "\n" + item.str;
-              }
-              lastY = item.transform[5];
-            }
-
-            return text;
-          });
-        },
-      };
-
-      // Parser le PDF avec l'import statique (évite le mode debug)
-      const pdfData = await pdfParse(dataBuffer, options);
+      // Extraire le texte et les métadonnées
+      const [textResult, infoResult] = await Promise.all([
+        parser.getText(),
+        parser.getInfo(),
+      ]);
 
       this.updateProgress(60, "Converting to Markdown");
 
       // Convertir le texte en Markdown
-      let markdown = this.convertTextToMarkdown(pdfData.text, pdfData);
+      let markdown = this.convertTextToMarkdown(
+        textResult.text,
+        textResult.total,
+      );
 
       this.updateProgress(80, "Adding metadata and saving");
 
@@ -86,12 +66,12 @@ class PdfToMarkdownConverter extends BaseConverter {
         source_file: path.basename(inputPath),
         file_size: fileInfo.size,
         converted_from: "PDF",
-        pages: pdfData.numpages,
+        pages: textResult.total,
         pdf_info: {
-          title: pdfData.info?.Title || "Unknown",
-          author: pdfData.info?.Author || "Unknown",
-          creator: pdfData.info?.Creator || "Unknown",
-          creation_date: pdfData.info?.CreationDate || null,
+          title: infoResult.info?.Title || "Unknown",
+          author: infoResult.info?.Author || "Unknown",
+          creator: infoResult.info?.Creator || "Unknown",
+          creation_date: infoResult.info?.CreationDate || null,
         },
       };
 
@@ -109,22 +89,27 @@ class PdfToMarkdownConverter extends BaseConverter {
         stats: {
           inputSize: fileInfo.size,
           outputLength: markdown.length,
-          pages: pdfData.numpages,
-          title: pdfData.info?.Title,
+          pages: textResult.total,
+          title: infoResult.info?.Title,
         },
       };
     } catch (error) {
       return this.handleError(error, "PDF conversion", inputPath);
+    } finally {
+      // Toujours libérer les ressources du parser
+      if (parser) {
+        await parser.destroy();
+      }
     }
   }
 
   /**
    * Convertit le texte brut extrait du PDF en Markdown
    * @param {string} text - Texte brut du PDF
-   * @param {object} pdfData - Données complètes du PDF
+   * @param {number} pageCount - Nombre de pages
    * @returns {string} - Texte formaté en Markdown
    */
-  convertTextToMarkdown(text, pdfData) {
+  convertTextToMarkdown(text, pageCount) {
     if (!text) return "";
 
     let markdown = text;
@@ -136,7 +121,7 @@ class PdfToMarkdownConverter extends BaseConverter {
     markdown = this.detectHeaders(markdown);
     markdown = this.detectLists(markdown);
     markdown = this.detectParagraphs(markdown);
-    markdown = this.addPageBreaks(markdown, pdfData.numpages);
+    markdown = this.addPageBreaks(markdown, pageCount);
 
     return markdown;
   }
@@ -316,14 +301,17 @@ class PdfToMarkdownConverter extends BaseConverter {
    * @returns {Promise<object>} - Métadonnées du PDF
    */
   async extractMetadata(filePath) {
+    let parser = null;
+
     try {
       const dataBuffer = await fs.readFile(filePath);
-      const pdfData = await pdfParse(dataBuffer);
+      parser = new PDFParse({ data: dataBuffer });
+      const infoResult = await parser.getInfo();
 
       return {
-        pages: pdfData.numpages,
-        info: pdfData.info || {},
-        textLength: pdfData.text?.length || 0,
+        pages: infoResult.total,
+        info: infoResult.info || {},
+        textLength: 0, // Non disponible sans getText
       };
     } catch (error) {
       this.log("metadata_extraction_failed", { error: error.message });
@@ -332,6 +320,10 @@ class PdfToMarkdownConverter extends BaseConverter {
         info: {},
         textLength: 0,
       };
+    } finally {
+      if (parser) {
+        await parser.destroy();
+      }
     }
   }
 }
