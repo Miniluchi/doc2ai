@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileText, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface FilePreviewItem {
@@ -45,7 +45,7 @@ export function FilePreview({
   const [previewData, setPreviewData] = useState<FilePreviewData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const fetchFilePreview = async () => {
+  const fetchFilePreview = useCallback(async () => {
     if (!credentials?.refreshToken || !folderId) {
       return;
     }
@@ -84,13 +84,13 @@ export function FilePreview({
     } finally {
       setLoading(false);
     }
-  };
+  }, [folderId, credentials, extensions]);
 
   useEffect(() => {
     if (folderId && credentials?.refreshToken) {
       fetchFilePreview();
     }
-  }, [folderId, credentials?.refreshToken, extensions]);
+  }, [folderId, credentials?.refreshToken, extensions, fetchFilePreview]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 B";

@@ -9,7 +9,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface GoogleDriveFolder {
@@ -50,55 +50,58 @@ export function GoogleDriveFolderPicker({
     { id: "root", name: "Mon Drive" },
   ]);
 
-  const fetchFolders = async (folderId: string) => {
-    if (!credentials?.refreshToken) {
-      toast.error("Credentials Google Drive manquants");
-      return;
-    }
+  const fetchFolders = useCallback(
+    async (folderId: string) => {
+      if (!credentials?.refreshToken) {
+        toast.error("Credentials Google Drive manquants");
+        return;
+      }
 
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `/api/sources/google-drive/folders?parent_id=${folderId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `/api/sources/google-drive/folders?parent_id=${folderId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              credentials,
+            }),
           },
-          body: JSON.stringify({
-            credentials,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setFolders(result.data);
-      } else {
-        throw new Error(
-          result.message || "Erreur lors du chargement des dossiers",
         );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          setFolders(result.data);
+        } else {
+          throw new Error(
+            result.message || "Erreur lors du chargement des dossiers",
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching folders:", error);
+        toast.error("Erreur lors du chargement des dossiers Google Drive");
+        setFolders([]);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching folders:", error);
-      toast.error("Erreur lors du chargement des dossiers Google Drive");
-      setFolders([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [credentials],
+  );
 
   // Charger les dossiers quand le dialog s'ouvre ou quand le dossier courant change
   useEffect(() => {
     if (isOpen && credentials?.refreshToken) {
       fetchFolders(currentFolderId);
     }
-  }, [isOpen, currentFolderId, credentials?.refreshToken]);
+  }, [isOpen, currentFolderId, credentials?.refreshToken, fetchFolders]);
 
   const handleFolderClick = (folder: GoogleDriveFolder) => {
     // Naviguer dans le dossier
