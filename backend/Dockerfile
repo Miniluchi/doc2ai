@@ -9,19 +9,19 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
+# Install dependencies and generate Prisma client
 RUN npm ci --omit=dev \
-  # Generate Prisma client
   && npx prisma generate \
-  # Copy source code
-  && cp -r . . \
-  # Create necessary directories
-  && mkdir -p /app/storage /app/temp /app/prisma \
-  # Fix pdf-parse debug mode by creating the test file it expects
-  && mkdir -p /app/test/data \
-  # TODO: A VERIFIER SI CES DEUX DERNIERES LIGNES SONT TOUJOURS PERTINENTES
-  && cp /app/node_modules/pdf-parse/test/data/05-versions-space.pdf /app/test/data/ 2>/dev/null || echo "Test file not found, creating dummy" \
-  && echo "%PDF-1.4 dummy" > /app/test/data/05-versions-space.pdf
+  && mkdir -p /app/storage /app/temp /app/prisma /app/test/data
+
+# Fix pdf-parse debug mode by creating the test file it expects
+# TODO: A VERIFIER SI CES DEUX DERNIERES LIGNES SONT TOUJOURS PERTINENTES
+RUN cp /app/node_modules/pdf-parse/test/data/05-versions-space.pdf \
+  /app/test/data/ 2>/dev/null \
+  || echo "%PDF-1.4 dummy" > /app/test/data/05-versions-space.pdf
+
+# Copy source code
+COPY src ./src/
 
 # Expose port
 EXPOSE 3000
