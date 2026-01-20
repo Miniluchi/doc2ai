@@ -18,7 +18,7 @@ class BaseConverter {
    * @param {string} outputPath - Chemin de sortie du fichier Markdown
    * @returns {Promise<{success: boolean, message?: string, checksum?: string, error?: string}>}
    */
-  async convert(inputPath, outputPath) {
+  async convert(_inputPath, _outputPath) {
     throw new Error("convert() method must be implemented by subclass");
   }
 
