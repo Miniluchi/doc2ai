@@ -1,16 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import { createRequire } from 'module'
-
-const require = createRequire(import.meta.url)
-const { execSync } = require('child_process')
 
 let prisma
 
 // Singleton pattern pour la connexion Prisma
 function getPrismaClient() {
   if (!prisma) {
-    const adapter = new PrismaBetterSqlite3(process.env.DATABASE_URL);
+    const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL });
     prisma = new PrismaClient({
       adapter,
       log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
@@ -23,16 +19,6 @@ function getPrismaClient() {
 export async function initializeDatabase() {
   try {
     console.log('🔄 Initializing database...')
-    
-    // Génère le client Prisma
-    console.log('📦 Generating Prisma client...')
-    execSync('npx prisma generate', { cwd: process.cwd() })
-    
-    // Applique les migrations en mode développement
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Running database migrations...')
-      execSync('npx prisma migrate deploy', { cwd: process.cwd() })
-    }
     
     const client = getPrismaClient()
     
