@@ -1,4 +1,16 @@
 /**
+ * Error thrown when OAuth credentials are expired or revoked.
+ * Controllers should catch this to return 401 instead of 500.
+ */
+export class TokenExpiredError extends Error {
+  constructor(message = "Refresh token expired or revoked") {
+    super(message);
+    this.name = "TokenExpiredError";
+    this.code = "TOKEN_EXPIRED";
+  }
+}
+
+/**
  * Interface de base pour tous les connecteurs de drives
  * Tous les connecteurs doivent hériter de cette classe
  */
@@ -106,6 +118,17 @@ class DriveConnector {
    */
   handleApiError(error, operation) {
     console.error(`${this.constructor.name} ${operation} failed:`, error);
+
+    // Detect expired/revoked OAuth tokens
+    const responseData = error.response?.data;
+    if (
+      responseData?.error === "invalid_grant" ||
+      error.response?.status === 401
+    ) {
+      throw new TokenExpiredError(
+        `${operation} failed: ${responseData?.error_description || "Refresh token expired or revoked"}`,
+      );
+    }
 
     // Enrichir l'erreur avec des informations contextuelles
     const enrichedError = new Error(`${operation} failed: ${error.message}`);

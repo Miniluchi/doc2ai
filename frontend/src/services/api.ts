@@ -16,6 +16,9 @@ import type {
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 console.log("API_BASE_URL: ", API_BASE_URL);
 
+/** Custom event dispatched when Google OAuth token is expired/revoked */
+export const GOOGLE_TOKEN_EXPIRED_EVENT = "google-auth-expired";
+
 class ApiError extends Error {
   public status?: number;
   public data?: any;
@@ -57,6 +60,11 @@ async function fetchApi<T>(
     console.log("fetchApi: Response data:", data);
 
     if (!response.ok) {
+      // Detect expired Google token and notify the app
+      if (response.status === 401 && data.code === "TOKEN_EXPIRED") {
+        window.dispatchEvent(new CustomEvent(GOOGLE_TOKEN_EXPIRED_EVENT));
+      }
+
       throw new ApiError(
         data.message || "Une erreur est survenue",
         response.status,
@@ -165,6 +173,36 @@ export const sourcesApi = {
   // Récupérer les statistiques des sources
   getStats: async (): Promise<SourceStats> => {
     const response = await fetchApi<ApiResponse<SourceStats>>("/sources/stats");
+    return response.data;
+  },
+
+  // Lister les dossiers Google Drive
+  getGoogleDriveFolders: async (
+    parentId: string,
+    credentials: { clientId: string; clientSecret: string; refreshToken: string },
+  ): Promise<any[]> => {
+    const response = await fetchApi<ApiResponse<any[]>>(
+      `/sources/google-drive/folders?parent_id=${encodeURIComponent(parentId)}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ credentials }),
+      },
+    );
+    return response.data;
+  },
+
+  // Prévisualiser les fichiers Google Drive
+  previewGoogleDriveFiles: async (
+    folderId: string,
+    credentials: { clientId: string; clientSecret: string; refreshToken: string },
+    extensions: string[],
+  ): Promise<{ totalFiles: number; convertibleFiles: number; files: any[] }> => {
+    const response = await fetchApi<
+      ApiResponse<{ totalFiles: number; convertibleFiles: number; files: any[] }>
+    >("/sources/google-drive/preview-files", {
+      method: "POST",
+      body: JSON.stringify({ folder_id: folderId, credentials, extensions }),
+    });
     return response.data;
   },
 };

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { GOOGLE_TOKEN_EXPIRED_EVENT } from "../services/api";
 import { TokenStorage } from "../services/tokenStorage";
 
 interface GoogleUser {
@@ -76,6 +77,26 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     checkAuthData();
   }, []);
 
+  const disconnect = useCallback((): void => {
+    setUser(null);
+    setError(null);
+    TokenStorage.clearCredentials();
+  }, []);
+
+  // Auto-disconnect when backend reports expired token
+  useEffect(() => {
+    const handleTokenExpired = () => {
+      console.warn("Google token expired, disconnecting...");
+      disconnect();
+      setError("Votre session Google a expiré, veuillez vous reconnecter");
+    };
+
+    window.addEventListener(GOOGLE_TOKEN_EXPIRED_EVENT, handleTokenExpired);
+    return () => {
+      window.removeEventListener(GOOGLE_TOKEN_EXPIRED_EVENT, handleTokenExpired);
+    };
+  }, [disconnect]);
+
   const connect = async (): Promise<void> => {
     setIsConnecting(true);
     setError(null);
@@ -100,12 +121,6 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
       setIsConnecting(false);
     }
-  };
-
-  const disconnect = (): void => {
-    setUser(null);
-    setError(null);
-    TokenStorage.clearCredentials(); // Nettoyer les credentials persistés
   };
 
   return {
