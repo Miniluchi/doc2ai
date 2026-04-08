@@ -12,8 +12,25 @@ class MonitoringService {
   constructor() {
     this.isRunning = false;
     this.activeMonitors = new Map();
+    this.syncInProgress = new Set();
     this.conversionService = new ConversionService();
     this.cronJob = null;
+  }
+
+  _parseAndDecryptConfig(source) {
+    const parsedConfig =
+      typeof source.config === "string"
+        ? JSON.parse(source.config)
+        : source.config;
+
+    const decryptedConfig = {
+      ...parsedConfig,
+      credentials: parsedConfig.credentials
+        ? decryptCredentials(parsedConfig.credentials)
+        : null,
+    };
+
+    return { parsedConfig, decryptedConfig };
   }
 
   async start() {
@@ -95,19 +112,7 @@ class MonitoringService {
     try {
       console.log(`🔍 Starting monitoring for: ${source.name}`);
 
-      // Parser le config JSON (Prisma SQLite retourne une string)
-      const parsedConfig =
-        typeof source.config === "string"
-          ? JSON.parse(source.config)
-          : source.config;
-
-      // Déchiffrer les credentials
-      const decryptedConfig = {
-        ...parsedConfig,
-        credentials: parsedConfig.credentials
-          ? decryptCredentials(parsedConfig.credentials)
-          : null,
-      };
+      const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
       // Créer le connecteur
       const connector = DriveConnectorFactory.createConnector(
@@ -202,78 +207,92 @@ class MonitoringService {
   }
 
   async syncSource(sourceId) {
+    // Guard against concurrent syncs on the same source
+    if (this.syncInProgress.has(sourceId)) {
+      console.log(`⚠️ Sync already in progress for source: ${sourceId}`);
+      return;
+    }
+
+    this.syncInProgress.add(sourceId);
+
     try {
       const monitor = this.activeMonitors.get(sourceId);
-      let source, connector;
 
-      if (!monitor) {
+      // Always fetch fresh source data from DB
+      const source = await prisma.source.findUnique({
+        where: { id: sourceId },
+      });
+
+      if (!source) {
+        throw new Error("Source not found");
+      }
+
+      if (source.status !== "active") {
+        throw new Error("Source must be active to sync");
+      }
+
+      let connector;
+
+      if (monitor) {
+        // Sync automatique : utiliser le connecteur existant, mais rafraîchir les données source
+        connector = monitor.connector;
+        monitor.source = source;
+      } else {
         // Sync manuelle : créer un connecteur temporaire
         console.log(`🔄 Manual sync for source: ${sourceId}`);
 
-        source = await prisma.source.findUnique({
-          where: { id: sourceId },
-        });
+        const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
-        if (!source) {
-          throw new Error("Source not found");
-        }
-
-        if (source.status !== "active") {
-          throw new Error("Source must be active to sync");
-        }
-
-        // Parser et déchiffrer le config
-        const parsedConfig =
-          typeof source.config === "string"
-            ? JSON.parse(source.config)
-            : source.config;
-
-        const decryptedConfig = {
-          ...parsedConfig,
-          credentials: parsedConfig.credentials
-            ? decryptCredentials(parsedConfig.credentials)
-            : null,
-        };
-
-        // Créer et authentifier le connecteur temporaire
         connector = DriveConnectorFactory.createConnector(
           source.platform,
           decryptedConfig,
         );
         await connector.authenticate();
-      } else {
-        // Sync automatique : utiliser le connecteur du monitor
-        source = monitor.source;
-        connector = monitor.connector;
       }
 
       console.log(`🔄 Syncing source: ${source.name}`);
 
-      // Parser le config si nécessaire
-      const config =
-        typeof source.config === "string"
-          ? JSON.parse(source.config)
-          : source.config;
+      // Parser le config une seule fois pour les filtres et le chemin
+      const { parsedConfig } = this._parseAndDecryptConfig(source);
 
       // Obtenir la liste des fichiers du drive
-      const sourcePath = config.sourcePath || "/";
+      const sourcePath = parsedConfig.sourcePath || "/";
       const files = await connector.listFiles(sourcePath);
 
-      // Filtrer les fichiers selon la configuration
-      const supportedExtensions = Array.isArray(config.filters?.extensions)
-        ? config.filters.extensions
-        : [".docx", ".pdf", ".doc"];
-      const excludePatterns = Array.isArray(config.filters?.excludePatterns)
-        ? config.filters.excludePatterns
-        : [];
+      // Normaliser les filtres (peuvent être des objets {"0":".docx",...} au lieu de tableaux)
+      const rawExtensions = parsedConfig.filters?.extensions;
+      const supportedExtensions = Array.isArray(rawExtensions)
+        ? rawExtensions
+        : rawExtensions && typeof rawExtensions === "object"
+          ? Object.values(rawExtensions)
+          : [".docx", ".pdf", ".doc"];
+
+      const rawExclude = parsedConfig.filters?.excludePatterns;
+      const excludePatterns = Array.isArray(rawExclude)
+        ? rawExclude
+        : rawExclude && typeof rawExclude === "object"
+          ? Object.values(rawExclude)
+          : [];
+
+      // Map Google Apps mimeTypes vers leurs extensions équivalentes
+      const googleMimeToExt = {
+        "application/vnd.google-apps.document": ".docx",
+        "application/vnd.google-apps.spreadsheet": ".xlsx",
+        "application/vnd.google-apps.presentation": ".pptx",
+      };
 
       const filteredFiles = files.filter((file) => {
-        // Vérifier l'extension
+        // Vérifier par extension du nom de fichier
         const hasValidExtension = supportedExtensions.some((ext) =>
           file.name.toLowerCase().endsWith(ext.toLowerCase()),
         );
 
-        if (!hasValidExtension) return false;
+        // Ou par mimeType Google Apps (ces fichiers n'ont pas d'extension dans leur nom)
+        const googleExt = googleMimeToExt[file.mimeType];
+        const matchesGoogleType = googleExt &&
+          supportedExtensions.some((ext) => ext.toLowerCase() === googleExt);
+
+        if (!hasValidExtension && !matchesGoogleType) return false;
 
         // Vérifier les patterns d'exclusion
         const isExcluded = excludePatterns.some((pattern) =>
@@ -285,7 +304,6 @@ class MonitoringService {
 
       console.log(`📁 Found ${filteredFiles.length} files to process`);
 
-      // Vérifier les fichiers modifiés ou nouveaux
       for (const file of filteredFiles) {
         await this.processFileChange(sourceId, file, connector);
       }
@@ -296,8 +314,10 @@ class MonitoringService {
         data: { lastSync: new Date() },
       });
 
-      // Mettre à jour le monitor
-      monitor.lastCheck = new Date();
+      // Mettre à jour le monitor si présent
+      if (monitor) {
+        monitor.lastCheck = new Date();
+      }
 
       // Log de succès
       await prisma.syncLog.create({
@@ -313,7 +333,6 @@ class MonitoringService {
       console.error(`❌ Sync failed for source ${sourceId}:`, error);
 
       try {
-        // Log d'erreur
         await prisma.syncLog.create({
           data: {
             sourceId,
@@ -328,6 +347,8 @@ class MonitoringService {
       }
 
       throw error;
+    } finally {
+      this.syncInProgress.delete(sourceId);
     }
   }
 

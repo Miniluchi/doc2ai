@@ -18,6 +18,9 @@ import fs from "fs-extra";
 
 const app = express();
 
+// Trust le premier proxy (nginx dans Docker)
+app.set("trust proxy", 1);
+
 /**
  * Configuration de l'application Express
  */

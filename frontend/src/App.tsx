@@ -95,23 +95,23 @@ function App() {
           <Alert className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Erreur lors du chargement: {sourcesError}
+              Erreur lors du chargement : {sourcesError}
             </AlertDescription>
           </Alert>
         )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
+          <Card className="text-center">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center justify-center gap-2">
                 <Cloud className="h-5 w-5 text-blue-500" />
-                Sources Connectées
+                Sources connectées
               </CardTitle>
             </CardHeader>
             <CardContent>
               {statsLoading ? (
-                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2 mx-auto" />
               ) : (
                 <div className="text-3xl font-bold">
                   {sourceStats?.totalSources || sources.length}
@@ -128,38 +128,28 @@ function App() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-center">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center justify-center gap-2">
                 <Download className="h-5 w-5 text-green-500" />
-                Fichiers Convertis
+                Fichiers convertis
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {conversionStats?.byStatus
-                  ? Object.values(conversionStats.byStatus).reduce(
-                      (a, b) => a + b,
-                      0,
-                    )
-                  : 0}
+                {conversionStats?.recent ?? 0}
               </div>
               <p className="text-sm text-muted-foreground">
-                Documents traités en Markdown
+                Dernières 24 heures
               </p>
-              {conversionStats?.recent && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {conversionStats.recent} dernières 24h
-                </p>
-              )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="text-center">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center justify-center gap-2">
                 <Activity className="h-5 w-5 text-orange-500" />
-                Statut Système
+                Statut système
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -174,14 +164,14 @@ function App() {
                   </Badge>
                   <p className="text-sm text-muted-foreground mt-2">
                     {monitoringStatus.isRunning
-                      ? `${monitoringStatus.activeMonitors} sources surveillées`
+                      ? `${monitoringStatus.totalActiveSources} sources surveillées`
                       : "Monitoring arrêté"}
                   </p>
                 </>
               ) : (
                 <>
-                  <Skeleton className="h-6 w-16 mb-2" />
-                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-6 w-16 mb-2 mx-auto" />
+                  <Skeleton className="h-4 w-24 mx-auto" />
                 </>
               )}
             </CardContent>
@@ -192,7 +182,7 @@ function App() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">Sources Documentaires</h2>
+              <h2 className="text-2xl font-semibold">Sources documentaires</h2>
               <p className="text-muted-foreground">
                 Configurez vos drives cloud et dépôts de documents
               </p>
@@ -200,7 +190,7 @@ function App() {
             <AddSourceDialog onSourceAdded={handleSourceAdded}>
               <Button>
                 <Plus className="h-4 w-4" />
-                Ajouter une Source
+                Ajouter une source
               </Button>
             </AddSourceDialog>
           </div>
@@ -236,7 +226,7 @@ function App() {
               <CardContent>
                 <Cloud className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                 <CardTitle className="mb-2">
-                  Aucune Source Documentaire
+                  Aucune source documentaire
                 </CardTitle>
                 <CardDescription className="mb-6 max-w-md mx-auto">
                   Commencez par connecter votre première source documentaire.
@@ -246,7 +236,7 @@ function App() {
                 <AddSourceDialog onSourceAdded={handleSourceAdded}>
                   <Button size="lg">
                     <Plus className="h-4 w-4" />
-                    Ajouter Votre Première Source
+                    Ajouter votre première source
                   </Button>
                 </AddSourceDialog>
               </CardContent>
@@ -274,8 +264,8 @@ function App() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <p>
-              Doc2AI - Convertisseur Automatique de Documentation pour
-              Développeurs
+              Doc2AI - Convertisseur automatique de documentation pour
+              développeurs
             </p>
             <div className="flex items-center gap-2">
               <p>Auto-hébergé • Sécurisé • Prêt IA</p>
