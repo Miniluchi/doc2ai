@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { sourcesApi } from "../../services/api";
 
 interface GoogleDriveFolder {
   id: string;
@@ -59,32 +60,11 @@ export function GoogleDriveFolderPicker({
 
       setLoading(true);
       try {
-        const response = await fetch(
-          `/api/sources/google-drive/folders?parent_id=${folderId}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              credentials,
-            }),
-          },
+        const folders = await sourcesApi.getGoogleDriveFolders(
+          folderId,
+          credentials,
         );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (result.success) {
-          setFolders(result.data);
-        } else {
-          throw new Error(
-            result.message || "Erreur lors du chargement des dossiers",
-          );
-        }
+        setFolders(folders);
       } catch (error) {
         console.error("Error fetching folders:", error);
         toast.error("Erreur lors du chargement des dossiers Google Drive");

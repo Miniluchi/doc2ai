@@ -20,7 +20,7 @@ export function encryptCredentials(data) {
     const iv = crypto.randomBytes(IV_LENGTH);
 
     // Créer le cipher
-    const cipher = crypto.createCipher(ALGORITHM, config.encryptionKey, iv);
+    const cipher = crypto.createCipheriv(ALGORITHM, config.encryptionKey, iv);
 
     // Chiffrer les données
     let encrypted = cipher.update(text, "utf8", ENCODING);
@@ -65,7 +65,7 @@ export function decryptCredentials(encryptedData) {
       .toString(ENCODING);
 
     // Créer le decipher
-    const decipher = crypto.createDecipher(ALGORITHM, config.encryptionKey, iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, config.encryptionKey, iv);
     decipher.setAuthTag(tag);
 
     // Déchiffrer
