@@ -258,29 +258,29 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
           </div>
 
           {/* Extensions et filtres */}
-          {source.config.filters && (
-            <div className="space-y-2">
-              {source.config.filters.extensions &&
-                source.config.filters.extensions.length > 0 && (
-                  <div>
-                    <span className="text-xs text-muted-foreground">
-                      Extensions:
-                    </span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {source.config.filters.extensions.map((ext, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="text-xs"
-                        >
-                          {ext}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-            </div>
-          )}
+          {source.config.filters?.extensions && (() => {
+            const exts = Array.isArray(source.config.filters.extensions)
+              ? source.config.filters.extensions
+              : Object.values(source.config.filters.extensions);
+            return exts.length > 0 ? (
+              <div>
+                <span className="text-xs text-muted-foreground">
+                  Extensions:
+                </span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {exts.map((ext, index) => (
+                    <Badge
+                      key={index}
+                      variant="outline"
+                      className="text-xs"
+                    >
+                      {ext as string}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
 
           {/* Jobs récents */}
           {source.jobs && source.jobs.length > 0 && (

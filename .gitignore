@@ -5,3 +5,5 @@ dist/
 .idea/
 .cursor/
 docs/
+
+./exports
