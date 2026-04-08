@@ -1,3 +1,4 @@
+import { TokenExpiredError } from "../integrations/base/driveConnector.js";
 import SourceService from "../services/sourceService.js";
 
 const sourceService = new SourceService();
@@ -172,6 +173,13 @@ class SourceController {
       });
     } catch (error) {
       console.error("Error in testCredentials:", error);
+      if (error instanceof TokenExpiredError) {
+        return res.status(401).json({
+          success: false,
+          code: "TOKEN_EXPIRED",
+          message: "Votre session Google a expiré, veuillez vous reconnecter",
+        });
+      }
       res.status(500).json({
         success: false,
         message: "Credentials test failed",
@@ -192,6 +200,13 @@ class SourceController {
       });
     } catch (error) {
       console.error("Error in testConnection:", error);
+      if (error instanceof TokenExpiredError) {
+        return res.status(401).json({
+          success: false,
+          code: "TOKEN_EXPIRED",
+          message: "Votre session Google a expiré, veuillez vous reconnecter",
+        });
+      }
       res.status(500).json({
         success: false,
         message: "Connection test failed",
@@ -263,6 +278,13 @@ class SourceController {
       });
     } catch (error) {
       console.error("Error in getGoogleDriveFolders:", error);
+      if (error instanceof TokenExpiredError) {
+        return res.status(401).json({
+          success: false,
+          code: "TOKEN_EXPIRED",
+          message: "Votre session Google a expiré, veuillez vous reconnecter",
+        });
+      }
       res.status(500).json({
         success: false,
         message: "Failed to fetch Google Drive folders",
@@ -299,6 +321,13 @@ class SourceController {
       });
     } catch (error) {
       console.error("Error in previewGoogleDriveFiles:", error);
+      if (error instanceof TokenExpiredError) {
+        return res.status(401).json({
+          success: false,
+          code: "TOKEN_EXPIRED",
+          message: "Votre session Google a expiré, veuillez vous reconnecter",
+        });
+      }
       res.status(500).json({
         success: false,
         message: "Failed to preview Google Drive files",

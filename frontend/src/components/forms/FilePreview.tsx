@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileText, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { sourcesApi } from "../../services/api";
 
 interface FilePreviewItem {
   id: string;
@@ -52,31 +53,12 @@ export function FilePreview({
 
     setLoading(true);
     try {
-      const response = await fetch("/api/sources/google-drive/preview-files", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          folder_id: folderId,
-          credentials,
-          extensions,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setPreviewData(result.data);
-      } else {
-        throw new Error(
-          result.message || "Erreur lors du chargement des fichiers",
-        );
-      }
+      const data = await sourcesApi.previewGoogleDriveFiles(
+        folderId,
+        credentials,
+        extensions,
+      );
+      setPreviewData(data);
     } catch (error) {
       console.error("Error fetching file preview:", error);
       toast.error("Erreur lors du chargement de la prévisualisation");
