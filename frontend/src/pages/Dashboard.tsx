@@ -71,7 +71,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
               <Cloud className="h-5 w-5 text-blue-500" />
-              Connected Sources
+              Connected sources
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -97,7 +97,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
               <Download className="h-5 w-5 text-green-500" />
-              Converted Files
+              Converted files
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -114,7 +114,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
               <Activity className="h-5 w-5 text-orange-500" />
-              System Status
+              System status
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -147,7 +147,7 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Document Sources</h2>
+            <h2 className="text-2xl font-semibold">Document sources</h2>
             <p className="text-muted-foreground">
               Configure your cloud drives and document repositories
             </p>
