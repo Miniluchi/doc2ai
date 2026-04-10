@@ -48,13 +48,13 @@ export function GoogleDriveFolderPicker({
   const [loading, setLoading] = useState(false);
   const [currentFolderId, setCurrentFolderId] = useState("root");
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([
-    { id: "root", name: "Mon Drive" },
+    { id: "root", name: "My Drive" },
   ]);
 
   const fetchFolders = useCallback(
     async (folderId: string) => {
       if (!credentials?.refreshToken) {
-        toast.error("Credentials Google Drive manquants");
+        toast.error("Google Drive credentials missing");
         return;
       }
 
@@ -67,7 +67,7 @@ export function GoogleDriveFolderPicker({
         setFolders(folders);
       } catch (error) {
         console.error("Error fetching folders:", error);
-        toast.error("Erreur lors du chargement des dossiers Google Drive");
+        toast.error("Error loading Google Drive folders");
         setFolders([]);
       } finally {
         setLoading(false);
@@ -76,7 +76,6 @@ export function GoogleDriveFolderPicker({
     [credentials],
   );
 
-  // Charger les dossiers quand le dialog s'ouvre ou quand le dossier courant change
   useEffect(() => {
     if (isOpen && credentials?.refreshToken) {
       fetchFolders(currentFolderId);
@@ -84,7 +83,6 @@ export function GoogleDriveFolderPicker({
   }, [isOpen, currentFolderId, credentials?.refreshToken, fetchFolders]);
 
   const handleFolderClick = (folder: GoogleDriveFolder) => {
-    // Naviguer dans le dossier
     setCurrentFolderId(folder.id);
     setBreadcrumbs((prev) => [...prev, { id: folder.id, name: folder.name }]);
   };
@@ -121,11 +119,10 @@ export function GoogleDriveFolderPicker({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
-            Choisir un dossier Google Drive
+            Choose a Google Drive folder
           </DialogTitle>
           <DialogDescription>
-            Sélectionnez le dossier que vous souhaitez surveiller pour la
-            conversion automatique
+            Select the folder you want to monitor for automatic conversion
           </DialogDescription>
         </DialogHeader>
 
@@ -149,10 +146,9 @@ export function GoogleDriveFolderPicker({
 
           <Separator />
 
-          {/* Bouton pour sélectionner le dossier courant */}
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
-              Dossier actuel:{" "}
+              Current folder:{" "}
               <span className="font-medium">
                 {breadcrumbs[breadcrumbs.length - 1].name}
               </span>
@@ -162,25 +158,24 @@ export function GoogleDriveFolderPicker({
               variant="outline"
               size="sm"
             >
-              Sélectionner ce dossier
+              Select this folder
             </Button>
           </div>
 
           <Separator />
 
-          {/* Liste des dossiers */}
           <ScrollArea className="h-[400px] w-full rounded-md border p-4">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                <span>Chargement des dossiers...</span>
+                <span>Loading folders...</span>
               </div>
             ) : folders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Folder className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Aucun sous-dossier trouvé</p>
+                <p>No subfolders found</p>
                 <p className="text-sm">
-                  Vous pouvez sélectionner le dossier courant ci-dessus
+                  You can select the current folder above
                 </p>
               </div>
             ) : (
@@ -198,9 +193,9 @@ export function GoogleDriveFolderPicker({
                       <div>
                         <p className="font-medium">{folder.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Modifié le{" "}
+                          Modified{" "}
                           {new Date(folder.modifiedTime).toLocaleDateString(
-                            "fr-FR",
+                            "en-US",
                           )}
                         </p>
                       </div>
@@ -214,7 +209,7 @@ export function GoogleDriveFolderPicker({
                         variant="outline"
                         size="sm"
                       >
-                        Sélectionner
+                        Select
                       </Button>
                       <Button
                         onClick={() => handleFolderClick(folder)}
@@ -230,10 +225,9 @@ export function GoogleDriveFolderPicker({
             )}
           </ScrollArea>
 
-          {/* Actions */}
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={onClose}>
-              Annuler
+              Cancel
             </Button>
           </div>
         </div>

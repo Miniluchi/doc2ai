@@ -7,7 +7,7 @@ interface GoogleCredentials {
 }
 
 const STORAGE_KEY = "doc2ai_google_credentials";
-const TOKEN_EXPIRY_HOURS = 24; // Les tokens expirent après 24h
+const TOKEN_EXPIRY_HOURS = 24;
 
 export class TokenStorage {
   static saveCredentials(credentials: GoogleCredentials): void {
@@ -30,7 +30,7 @@ export class TokenStorage {
 
       const credentials: GoogleCredentials = JSON.parse(stored);
 
-      // Vérifier si le token n'a pas expiré
+      // Check if token has expired
       if (credentials.expiresAt && Date.now() > credentials.expiresAt) {
         this.clearCredentials();
         return null;

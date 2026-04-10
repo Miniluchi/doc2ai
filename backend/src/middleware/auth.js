@@ -1,25 +1,14 @@
-/**
- * Middleware d'authentification et d'autorisation
- * Note: Pour une version basique, l'auth est simplifiée
- * En production, vous devriez implémenter JWT + utilisateurs
- */
-
 import jwt from "jsonwebtoken";
 import config from "../config/env.js";
 
-/**
- * Middleware d'authentification JWT (optionnel pour la demo)
- * Actuellement désactivé car pas d'auth utilisateur implémentée
- */
 export function authenticateToken(req, res, next) {
-  // Pour l'instant, on skip l'auth en mode développement
   if (config.nodeEnv === "development") {
-    console.log("🔓 Authentication bypassed in development mode");
+    console.log("Authentication bypassed in development mode");
     return next();
   }
 
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({
@@ -52,16 +41,11 @@ export function authenticateToken(req, res, next) {
   }
 }
 
-/**
- * Middleware optionnel d'authentification
- * Permet l'accès anonyme mais enrichit les infos si token présent
- */
 export function optionalAuth(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    // Pas de token, mais on continue
     req.user = null;
     return next();
   }
@@ -70,7 +54,6 @@ export function optionalAuth(req, res, next) {
     const decoded = jwt.verify(token, config.jwtSecret);
     req.user = decoded;
   } catch {
-    // Token invalide, mais on continue quand même
     req.user = null;
     console.warn("Optional auth: invalid token provided");
   }
@@ -78,9 +61,6 @@ export function optionalAuth(req, res, next) {
   next();
 }
 
-/**
- * Génère un JWT pour les tests (fonction utilitaire)
- */
 const DEFAULT_TEST_PAYLOAD = { userId: "test-user", role: "admin" };
 
 export function generateTestToken(payload) {
@@ -92,12 +72,8 @@ export function generateTestToken(payload) {
   });
 }
 
-/**
- * Middleware de vérification des permissions (placeholder)
- */
 export function requirePermission(permission) {
   return (req, res, next) => {
-    // Pour l'instant, on accepte tout le monde en mode développement
     if (config.nodeEnv === "development") {
       return next();
     }
@@ -110,16 +86,13 @@ export function requirePermission(permission) {
       });
     }
 
-    // Vérification des permissions (à implémenter selon vos besoins)
     const userPermissions = req.user.permissions || [];
     const userRole = req.user.role || "user";
 
-    // Admin a tous les droits
     if (userRole === "admin") {
       return next();
     }
 
-    // Vérifier si l'utilisateur a la permission requise
     if (!userPermissions.includes(permission)) {
       return res.status(403).json({
         success: false,
@@ -132,9 +105,6 @@ export function requirePermission(permission) {
   };
 }
 
-/**
- * Middleware de limitation d'accès par rôle
- */
 export function requireRole(requiredRole) {
   return (req, res, next) => {
     if (config.nodeEnv === "development") {
@@ -170,21 +140,15 @@ export function requireRole(requiredRole) {
   };
 }
 
-/**
- * Middleware pour les opérations d'administration
- */
 export const requireAdmin = requireRole("admin");
 
-/**
- * Middleware pour logger les tentatives d'authentification
- */
 export function logAuthAttempts(req, res, next) {
   const authHeader = req.headers["authorization"];
   const hasToken = !!authHeader;
   const userAgent = req.get("User-Agent");
   const ip = req.ip || req.connection.remoteAddress;
 
-  console.log("🔐 Auth attempt:", {
+  console.log("Auth attempt:", {
     method: req.method,
     url: req.originalUrl,
     hasToken,
@@ -196,17 +160,10 @@ export function logAuthAttempts(req, res, next) {
   next();
 }
 
-/**
- * Middleware pour les routes publiques (pas d'auth requise)
- */
 export function publicRoute(req, res, next) {
-  // Simplement passer, ces routes sont accessibles à tous
   next();
 }
 
-/**
- * Middleware pour extraire les infos utilisateur du token sans validation stricte
- */
 export function extractUserInfo(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -227,7 +184,6 @@ export function extractUserInfo(req, res, next) {
         ...decoded,
       };
     } catch (error) {
-      // Token invalide, mais on garde les valeurs par défaut
       console.warn("Token extraction failed:", error.message);
     }
   }

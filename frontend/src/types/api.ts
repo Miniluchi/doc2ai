@@ -1,5 +1,3 @@
-// Types pour l'API Backend Doc2AI
-
 export interface Source {
   id: string;
   name: string;
@@ -14,7 +12,7 @@ export interface Source {
 }
 
 export interface SourceConfig {
-  credentials: any; // Chiffré côté backend
+  credentials: any;
   sourcePath: string;
   siteUrl?: string; // Pour SharePoint
   destination: string;

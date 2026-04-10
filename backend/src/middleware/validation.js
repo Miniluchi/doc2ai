@@ -1,39 +1,28 @@
-/**
- * Middleware de validation des données
- */
 import { validateDestinationPath } from "../utils/configParser.js";
 
-/**
- * Valide les données de création d'une source
- */
 export function validateSourceData(req, res, next) {
   const { name, platform, config } = req.body;
 
   const errors = [];
 
-  // Validation du nom
   if (!name || typeof name !== "string" || name.trim().length === 0) {
     errors.push("Name is required and must be a non-empty string");
   } else if (name.length > 100) {
     errors.push("Name must be less than 100 characters");
   }
 
-  // Validation de la plateforme
   const supportedPlatforms = ["sharepoint", "googledrive", "onedrive"];
   if (!platform || !supportedPlatforms.includes(platform.toLowerCase())) {
     errors.push(`Platform must be one of: ${supportedPlatforms.join(", ")}`);
   }
 
-  // Validation de la configuration
   if (!config || typeof config !== "object") {
     errors.push("Config is required and must be an object");
   } else {
-    // Validation des credentials
     if (!config.credentials || typeof config.credentials !== "object") {
       errors.push("Config.credentials is required and must be an object");
     }
 
-    // Validation spécifique par plateforme
     if (platform === "sharepoint" || platform === "onedrive") {
       const { clientId, clientSecret, tenantId } = config.credentials || {};
       if (!clientId) errors.push("Microsoft clientId is required");
@@ -51,7 +40,6 @@ export function validateSourceData(req, res, next) {
       if (!refreshToken) errors.push("Google refreshToken is required");
     }
 
-    // Validation de la destination avec sécurité
     if (config.destination) {
       if (typeof config.destination !== "string") {
         errors.push("Config.destination must be a string");
@@ -76,20 +64,15 @@ export function validateSourceData(req, res, next) {
   next();
 }
 
-/**
- * Valide les données de création d'un job de conversion
- */
 export function validateConversionJobData(req, res, next) {
   const { sourceId, fileName, filePath, fileSize } = req.body;
 
   const errors = [];
 
-  // Validation du sourceId
   if (!sourceId || typeof sourceId !== "string") {
     errors.push("sourceId is required and must be a string");
   }
 
-  // Validation du nom de fichier
   if (
     !fileName ||
     typeof fileName !== "string" ||
@@ -97,7 +80,6 @@ export function validateConversionJobData(req, res, next) {
   ) {
     errors.push("fileName is required and must be a non-empty string");
   } else {
-    // Vérifier l'extension
     const supportedExtensions = [".docx", ".doc", ".pdf"];
     const extension = fileName
       .substring(fileName.lastIndexOf("."))
@@ -109,7 +91,6 @@ export function validateConversionJobData(req, res, next) {
     }
   }
 
-  // Validation du chemin de fichier
   if (
     !filePath ||
     typeof filePath !== "string" ||
@@ -118,7 +99,6 @@ export function validateConversionJobData(req, res, next) {
     errors.push("filePath is required and must be a non-empty string");
   }
 
-  // Validation de la taille (optionnelle)
   if (
     fileSize !== undefined &&
     (typeof fileSize !== "number" || fileSize < 0)
@@ -137,9 +117,6 @@ export function validateConversionJobData(req, res, next) {
   next();
 }
 
-/**
- * Valide les paramètres de pagination
- */
 export function validatePagination(req, res, next) {
   const { page, limit } = req.query;
 
@@ -168,9 +145,6 @@ export function validatePagination(req, res, next) {
   next();
 }
 
-/**
- * Valide le format des IDs (CUID)
- */
 export function validateId(paramName = "id") {
   return (req, res, next) => {
     const id = req.params[paramName];
@@ -182,7 +156,7 @@ export function validateId(paramName = "id") {
       });
     }
 
-    // Validation basique du format CUID (commence par 'c' suivi de caractères alphanumériques)
+    // Basic CUID format validation (starts with 'c' followed by alphanumeric chars)
     if (!/^c[a-z0-9]{10,}$/i.test(id)) {
       return res.status(400).json({
         success: false,
@@ -194,9 +168,6 @@ export function validateId(paramName = "id") {
   };
 }
 
-/**
- * Valide les filtres de statut pour les jobs
- */
 export function validateJobStatus(req, res, next) {
   const { status } = req.query;
 
@@ -213,14 +184,9 @@ export function validateJobStatus(req, res, next) {
   next();
 }
 
-/**
- * Sanitise les entrées utilisateur
- */
 export function sanitizeInput(req, res, next) {
-  // Fonction récursive pour nettoyer un objet
   function sanitize(obj) {
     if (typeof obj === "string") {
-      // Supprimer les caractères dangereux
       return obj.trim().replace(/[<>]/g, "");
     } else if (typeof obj === "object" && obj !== null) {
       const sanitized = {};
@@ -243,9 +209,6 @@ export function sanitizeInput(req, res, next) {
   next();
 }
 
-/**
- * Valide les limites de taille des requêtes
- */
 export function validateRequestSize(maxSizeMB = 10) {
   return (req, res, next) => {
     const contentLength = parseInt(req.get("content-length"));
@@ -263,9 +226,6 @@ export function validateRequestSize(maxSizeMB = 10) {
   };
 }
 
-/**
- * Valide le Content-Type pour les requêtes POST/PUT
- */
 export function validateContentType(req, res, next) {
   if (["POST", "PUT", "PATCH"].includes(req.method)) {
     const contentType = req.get("content-type");

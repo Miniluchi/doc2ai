@@ -1,5 +1,3 @@
-// Services API pour communiquer avec le backend Doc2AI
-
 import type {
   ApiResponse,
   ConnectionTestResult,
@@ -60,13 +58,12 @@ async function fetchApi<T>(
     console.log("fetchApi: Response data:", data);
 
     if (!response.ok) {
-      // Detect expired Google token and notify the app
       if (response.status === 401 && data.code === "TOKEN_EXPIRED") {
         window.dispatchEvent(new CustomEvent(GOOGLE_TOKEN_EXPIRED_EVENT));
       }
 
       throw new ApiError(
-        data.message || "Une erreur est survenue",
+        data.message || "An error occurred",
         response.status,
         data,
       );
@@ -78,9 +75,8 @@ async function fetchApi<T>(
       throw error;
     }
 
-    // Erreur réseau ou parsing JSON
     throw new ApiError(
-      error instanceof Error ? error.message : "Erreur de connexion",
+      error instanceof Error ? error.message : "Connection error",
       0,
     );
   }
@@ -89,19 +85,16 @@ async function fetchApi<T>(
 // === Sources API ===
 
 export const sourcesApi = {
-  // Récupérer toutes les sources
   getAll: async (): Promise<Source[]> => {
     const response = await fetchApi<ApiResponse<Source[]>>("/sources");
     return response.data;
   },
 
-  // Récupérer une source par ID
   getById: async (id: string): Promise<Source> => {
     const response = await fetchApi<ApiResponse<Source>>(`/sources/${id}`);
     return response.data;
   },
 
-  // Créer une nouvelle source
   create: async (sourceData: CreateSourceRequest): Promise<Source> => {
     console.log("API: Creating source with data:", sourceData);
     console.log("API: Making POST request to:", `${API_BASE_URL}/sources`);
@@ -113,7 +106,6 @@ export const sourcesApi = {
     return response.data;
   },
 
-  // Mettre à jour une source
   update: async (
     id: string,
     sourceData: Partial<CreateSourceRequest>,
@@ -125,14 +117,12 @@ export const sourcesApi = {
     return response.data;
   },
 
-  // Supprimer une source
   delete: async (id: string): Promise<void> => {
     await fetchApi<ApiResponse<null>>(`/sources/${id}`, {
       method: "DELETE",
     });
   },
 
-  // Tester la connexion d'une source
   testConnection: async (id: string): Promise<ConnectionTestResult> => {
     const response = await fetchApi<ApiResponse<ConnectionTestResult>>(
       `/sources/${id}/test`,
@@ -143,7 +133,6 @@ export const sourcesApi = {
     return response.data;
   },
 
-  // Tester les identifiants avant création
   testCredentials: async (credentialsData: {
     platform: string;
     credentials: any;
@@ -160,7 +149,6 @@ export const sourcesApi = {
     return response.data;
   },
 
-  // Synchroniser une source manuellement
   sync: async (id: string): Promise<void> => {
     await fetchApi<ApiResponse<{ success: boolean; message: string }>>(
       `/sources/${id}/sync`,
@@ -170,13 +158,11 @@ export const sourcesApi = {
     );
   },
 
-  // Récupérer les statistiques des sources
   getStats: async (): Promise<SourceStats> => {
     const response = await fetchApi<ApiResponse<SourceStats>>("/sources/stats");
     return response.data;
   },
 
-  // Lister les dossiers Google Drive
   getGoogleDriveFolders: async (
     parentId: string,
     credentials: { clientId: string; clientSecret: string; refreshToken: string },
@@ -191,7 +177,6 @@ export const sourcesApi = {
     return response.data;
   },
 
-  // Prévisualiser les fichiers Google Drive
   previewGoogleDriveFiles: async (
     folderId: string,
     credentials: { clientId: string; clientSecret: string; refreshToken: string },
@@ -210,7 +195,6 @@ export const sourcesApi = {
 // === Conversions API ===
 
 export const conversionsApi = {
-  // Récupérer tous les jobs de conversion
   getAll: async (
     page = 1,
     limit = 20,
@@ -227,7 +211,6 @@ export const conversionsApi = {
     );
   },
 
-  // Récupérer un job par ID
   getById: async (id: string): Promise<ConversionJob> => {
     const response = await fetchApi<ApiResponse<ConversionJob>>(
       `/conversions/${id}`,
@@ -235,7 +218,6 @@ export const conversionsApi = {
     return response.data;
   },
 
-  // Créer un job de conversion manuel
   create: async (jobData: {
     sourceId: string;
     fileName: string;
@@ -252,7 +234,6 @@ export const conversionsApi = {
     return response.data;
   },
 
-  // Annuler un job
   cancel: async (id: string): Promise<ConversionJob> => {
     const response = await fetchApi<ApiResponse<ConversionJob>>(
       `/conversions/${id}`,
@@ -263,7 +244,6 @@ export const conversionsApi = {
     return response.data;
   },
 
-  // Relancer un job échoué
   retry: async (id: string): Promise<ConversionJob> => {
     const response = await fetchApi<ApiResponse<ConversionJob>>(
       `/conversions/${id}/retry`,
@@ -274,7 +254,6 @@ export const conversionsApi = {
     return response.data;
   },
 
-  // Récupérer la progression d'un job
   getProgress: async (
     id: string,
   ): Promise<{
@@ -291,14 +270,12 @@ export const conversionsApi = {
     return response.data;
   },
 
-  // Récupérer les statistiques des conversions
   getStats: async (): Promise<ConversionStats> => {
     const response =
       await fetchApi<ApiResponse<ConversionStats>>("/conversions/stats");
     return response.data;
   },
 
-  // Nettoyer les anciens jobs
   cleanup: async (olderThanDays = 30): Promise<{ deletedCount: number }> => {
     const response = await fetchApi<ApiResponse<{ deletedCount: number }>>(
       "/conversions/cleanup",
@@ -314,35 +291,30 @@ export const conversionsApi = {
 // === Monitoring API ===
 
 export const monitoringApi = {
-  // Récupérer le statut du monitoring
   getStatus: async (): Promise<MonitoringStatus> => {
     const response =
       await fetchApi<ApiResponse<MonitoringStatus>>("/monitoring/status");
     return response.data;
   },
 
-  // Démarrer le monitoring
   start: async (): Promise<void> => {
     await fetchApi<ApiResponse<null>>("/monitoring/start", {
       method: "POST",
     });
   },
 
-  // Arrêter le monitoring
   stop: async (): Promise<void> => {
     await fetchApi<ApiResponse<null>>("/monitoring/stop", {
       method: "POST",
     });
   },
 
-  // Redémarrer le monitoring
   restart: async (): Promise<void> => {
     await fetchApi<ApiResponse<null>>("/monitoring/restart", {
       method: "POST",
     });
   },
 
-  // Récupérer les logs
   getLogs: async (sourceId?: string, limit = 50): Promise<SyncLog[]> => {
     const params = new URLSearchParams({
       limit: limit.toString(),
@@ -355,14 +327,12 @@ export const monitoringApi = {
     return response.data;
   },
 
-  // Synchroniser une source spécifique
   syncSource: async (sourceId: string): Promise<void> => {
     await fetchApi<ApiResponse<null>>(`/monitoring/sync/${sourceId}`, {
       method: "POST",
     });
   },
 
-  // Health check
   healthCheck: async (): Promise<{
     status: string;
     monitoring: boolean;
@@ -379,7 +349,6 @@ export const monitoringApi = {
 // === Health API ===
 
 export const healthApi = {
-  // Health check général
   check: async (): Promise<{
     name: string;
     version: string;
@@ -393,5 +362,4 @@ export const healthApi = {
   },
 };
 
-// Export de l'erreur pour la gestion
 export { ApiError };

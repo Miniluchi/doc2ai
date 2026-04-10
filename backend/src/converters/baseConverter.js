@@ -2,31 +2,16 @@ import fs from "fs-extra";
 import path from "path";
 import { generateFileChecksum } from "../utils/encryption.js";
 
-/**
- * Classe de base pour tous les convertisseurs
- * Tous les convertisseurs doivent hériter de cette classe
- */
 class BaseConverter {
   constructor() {
     this.name = "Base Converter";
     this.supportedExtensions = [];
   }
 
-  /**
-   * Convertit un fichier vers Markdown
-   * @param {string} inputPath - Chemin du fichier source
-   * @param {string} outputPath - Chemin de sortie du fichier Markdown
-   * @returns {Promise<{success: boolean, message?: string, checksum?: string, error?: string}>}
-   */
   async convert(_inputPath, _outputPath) {
     throw new Error("convert() method must be implemented by subclass");
   }
 
-  /**
-   * Valide qu'un fichier d'entrée existe et est lisible
-   * @param {string} filePath - Chemin du fichier
-   * @returns {Promise<boolean>} - True si le fichier est valide
-   */
   async validateInputFile(filePath) {
     try {
       const exists = await fs.pathExists(filePath);
@@ -50,17 +35,10 @@ class BaseConverter {
     }
   }
 
-  /**
-   * Prépare le fichier de sortie
-   * @param {string} outputPath - Chemin de sortie
-   * @returns {Promise<void>}
-   */
   async prepareOutputFile(outputPath) {
     try {
-      // Créer le répertoire parent s'il n'existe pas
       await fs.ensureDir(path.dirname(outputPath));
 
-      // Si le fichier existe déjà, le supprimer
       if (await fs.pathExists(outputPath)) {
         await fs.remove(outputPath);
       }
@@ -70,24 +48,13 @@ class BaseConverter {
     }
   }
 
-  /**
-   * Nettoie le contenu Markdown généré
-   * @param {string} markdown - Contenu Markdown brut
-   * @returns {string} - Contenu Markdown nettoyé
-   */
   cleanMarkdown(markdown) {
     if (!markdown) return "";
 
-    // Supprimer les lignes vides excessives
     let cleaned = markdown.replace(/\n{3,}/g, "\n\n");
-
-    // Nettoyer les espaces en fin de ligne
     cleaned = cleaned.replace(/[ \t]+$/gm, "");
-
-    // Nettoyer les espaces en début/fin de document
     cleaned = cleaned.trim();
 
-    // Assurer qu'il y a une ligne vide à la fin
     if (cleaned && !cleaned.endsWith("\n")) {
       cleaned += "\n";
     }
@@ -95,12 +62,6 @@ class BaseConverter {
     return cleaned;
   }
 
-  /**
-   * Ajoute des métadonnées au début du fichier Markdown
-   * @param {string} markdown - Contenu Markdown
-   * @param {object} metadata - Métadonnées à ajouter
-   * @returns {string} - Markdown avec métadonnées
-   */
   addMetadata(markdown, metadata = {}) {
     const defaultMetadata = {
       generated_by: "Doc2AI",
@@ -121,12 +82,6 @@ class BaseConverter {
     return metadataLines.join("\n");
   }
 
-  /**
-   * Sauvegarde le contenu Markdown dans un fichier
-   * @param {string} markdown - Contenu Markdown
-   * @param {string} outputPath - Chemin de sortie
-   * @returns {Promise<string>} - Checksum du fichier sauvegardé
-   */
   async saveMarkdown(markdown, outputPath) {
     try {
       await this.prepareOutputFile(outputPath);
@@ -134,7 +89,6 @@ class BaseConverter {
       const cleanedMarkdown = this.cleanMarkdown(markdown);
       await fs.writeFile(outputPath, cleanedMarkdown, "utf8");
 
-      // Générer le checksum du fichier créé
       const checksum = await generateFileChecksum(outputPath);
 
       console.log(
@@ -148,22 +102,10 @@ class BaseConverter {
     }
   }
 
-  /**
-   * Log une opération du convertisseur
-   * @param {string} operation - Nom de l'opération
-   * @param {object} details - Détails de l'opération
-   */
   log(operation, details = {}) {
     console.log(`[${this.name}] ${operation}:`, details);
   }
 
-  /**
-   * Gère les erreurs de conversion
-   * @param {Error} error - Erreur à traiter
-   * @param {string} operation - Nom de l'opération qui a échoué
-   * @param {string} filePath - Chemin du fichier concerné
-   * @returns {object} - Résultat d'erreur formaté
-   */
   handleError(error, operation, filePath) {
     const errorMessage = `${operation} failed for ${filePath}: ${error.message}`;
     console.error(`[${this.name}] ${errorMessage}`, error);
@@ -181,11 +123,6 @@ class BaseConverter {
     };
   }
 
-  /**
-   * Obtient des informations sur le fichier d'entrée
-   * @param {string} filePath - Chemin du fichier
-   * @returns {Promise<object>} - Informations sur le fichier
-   */
   async getFileInfo(filePath) {
     try {
       const stats = await fs.stat(filePath);
@@ -205,11 +142,6 @@ class BaseConverter {
     }
   }
 
-  /**
-   * Méthode utilitaire pour la progression (peut être overridée)
-   * @param {number} progress - Progression 0-100
-   * @param {string} message - Message de progression
-   */
   updateProgress(progress, message) {
     console.log(`[${this.name}] ${progress}% - ${message}`);
   }

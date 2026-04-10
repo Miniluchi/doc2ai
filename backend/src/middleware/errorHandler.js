@@ -1,16 +1,8 @@
-/**
- * Middleware de gestion des erreurs pour Express
- */
-
 import config from "../config/env.js";
 
-/**
- * Middleware principal de gestion d'erreur
- */
 export function errorHandler(error, req, res, _next) {
   console.error("❌ Unhandled error:", error);
 
-  // Erreur de validation Prisma
   if (error.code === "P2002") {
     return res.status(409).json({
       success: false,
@@ -19,7 +11,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur de validation Prisma - Record not found
   if (error.code === "P2025") {
     return res.status(404).json({
       success: false,
@@ -28,7 +19,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur JWT
   if (error.name === "JsonWebTokenError") {
     return res.status(401).json({
       success: false,
@@ -45,7 +35,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur de validation des données (body parser, etc.)
   if (error.type === "entity.parse.failed") {
     return res.status(400).json({
       success: false,
@@ -54,7 +43,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur de payload trop grand
   if (error.type === "entity.too.large") {
     return res.status(413).json({
       success: false,
@@ -63,7 +51,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur de timeout
   if (error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
     return res.status(408).json({
       success: false,
@@ -72,7 +59,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur de permission/accès
   if (error.code === "EACCES" || error.code === "EPERM") {
     return res.status(403).json({
       success: false,
@@ -81,7 +67,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur de fichier non trouvé
   if (error.code === "ENOENT") {
     return res.status(404).json({
       success: false,
@@ -90,7 +75,6 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur d'espace disque insuffisant
   if (error.code === "ENOSPC") {
     return res.status(507).json({
       success: false,
@@ -99,11 +83,9 @@ export function errorHandler(error, req, res, _next) {
     });
   }
 
-  // Erreur par défaut
   const statusCode = error.statusCode || error.status || 500;
   const message = error.message || "Internal server error";
 
-  // En développement, on expose plus de détails
   const errorResponse = {
     success: false,
     message: statusCode === 500 ? "Internal server error" : message,
@@ -113,7 +95,6 @@ export function errorHandler(error, req, res, _next) {
         : "An unexpected error occurred",
   };
 
-  // Ajouter la stack trace en développement
   if (config.nodeEnv === "development") {
     errorResponse.stack = error.stack;
     errorResponse.details = {
@@ -126,9 +107,6 @@ export function errorHandler(error, req, res, _next) {
   res.status(statusCode).json(errorResponse);
 }
 
-/**
- * Middleware pour gérer les routes non trouvées
- */
 export function notFoundHandler(req, res) {
   res.status(404).json({
     success: false,
@@ -144,27 +122,18 @@ export function notFoundHandler(req, res) {
   });
 }
 
-/**
- * Middleware pour capturer les erreurs async non gérées
- */
 export function asyncErrorHandler(fn) {
   return (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
 
-/**
- * Wrapper pour les routes async
- */
 export function wrapAsync(fn) {
   return function (req, res, next) {
     fn(req, res, next).catch(next);
   };
 }
 
-/**
- * Middleware de validation des erreurs de requête
- */
 export function validationErrorHandler(error, req, res, next) {
   if (error.name === "ValidationError") {
     return res.status(400).json({
@@ -177,11 +146,7 @@ export function validationErrorHandler(error, req, res, next) {
   next(error);
 }
 
-/**
- * Log des erreurs pour monitoring
- */
 export function logError(error, req, res, next) {
-  // Log détaillé de l'erreur
   console.error("Error details:", {
     message: error.message,
     stack: error.stack,

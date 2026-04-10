@@ -2,81 +2,60 @@ import Queue from "bull";
 import config from "../config/env.js";
 import ConversionService from "./conversionService.js";
 
-/**
- * Service de gestion de la queue asynchrone pour les conversions de documents
- * Utilise Bull pour gérer les jobs de conversion de manière asynchrone
- */
 class QueueService {
   constructor() {
     this.conversionService = new ConversionService();
 
-    // Créer la queue de conversion avec Redis
     this.conversionQueue = new Queue("document-conversion", config.redisUrl, {
       defaultJobOptions: {
-        attempts: 3, // 3 tentatives en cas d'échec
+        attempts: 3,
         backoff: {
           type: "exponential",
-          delay: 2000, // Délai initial de 2s, puis 4s, puis 8s
+          delay: 2000,
         },
-        removeOnComplete: 100, // Garder les 100 derniers jobs complétés
-        removeOnFail: 200, // Garder les 200 derniers jobs échoués
+        removeOnComplete: 100,
+        removeOnFail: 200,
       },
     });
 
-    // Configuration des event handlers
     this.setupEventHandlers();
   }
 
-  /**
-   * Configure les gestionnaires d'événements pour la queue
-   */
   setupEventHandlers() {
-    // Job complété avec succès
     this.conversionQueue.on("completed", (job, result) => {
-      console.log(`✅ Job ${job.id} complété: ${result.fileName}`);
+      console.log(`Job ${job.id} completed: ${result.fileName}`);
     });
 
-    // Job échoué
     this.conversionQueue.on("failed", (job, error) => {
-      console.error(`❌ Job ${job.id} échoué:`, error.message);
+      console.error(`❌ Job ${job.id} failed:`, error.message);
     });
 
-    // Job en cours
     this.conversionQueue.on("active", (job) => {
-      console.log(`⚙️ Traitement du job ${job.id}: ${job.data.fileName}`);
+      console.log(`Processing job ${job.id}: ${job.data.fileName}`);
     });
 
-    // Progression d'un job
     this.conversionQueue.on("progress", (job, progress) => {
-      console.log(`📊 Job ${job.id} progression: ${progress}%`);
+      console.log(`Job ${job.id} progress: ${progress}%`);
     });
 
-    // Queue en erreur
     this.conversionQueue.on("error", (error) => {
-      console.error("❌ Erreur de queue:", error);
+      console.error("❌ Queue error:", error);
     });
   }
 
   /**
-   * Configure le processeur de jobs
-   * @param {number} concurrency - Nombre de jobs à traiter en parallèle (défaut: 3)
+   * Start consuming the conversion queue.
+   * @param {number} concurrency - Number of jobs to process in parallel
    */
   async startProcessing(concurrency = 3) {
-    console.log(
-      `🚀 Démarrage du processeur de queue (concurrence: ${concurrency})`,
-    );
+    console.log(`Starting queue processor (concurrency: ${concurrency})`);
 
     this.conversionQueue.process(concurrency, async (job) => {
       const { jobId, fileName } = job.data;
 
       try {
-        // Mettre à jour la progression: démarrage
         await job.progress(10);
-
-        // Traiter le job de conversion
         const result = await this.conversionService.processJob(jobId);
-
-        // Mettre à jour la progression: terminé
         await job.progress(100);
 
         return {
@@ -86,20 +65,18 @@ class QueueService {
           outputPath: result.outputPath,
         };
       } catch (error) {
-        console.error(`❌ Erreur lors du traitement du job ${jobId}:`, error);
-
-        // Relancer l'erreur pour que Bull gère les retries
+        console.error(`❌ Error processing job ${jobId}:`, error);
         throw error;
       }
     });
   }
 
   /**
-   * Ajoute un job de conversion à la queue
-   * @param {string} jobId - ID du job de conversion dans la base de données
-   * @param {string} fileName - Nom du fichier à convertir
-   * @param {object} options - Options du job (priority, delay, etc.)
-   * @returns {Promise<object>} Job Bull créé
+   * Add a conversion job to the queue.
+   * @param {string} jobId - ConversionJob DB id
+   * @param {string} fileName - Human-readable file name for logging
+   * @param {object} [options] - Optional Bull job options (priority, delay)
+   * @returns {Promise<Bull.Job>} The created Bull job
    */
   async enqueueConversion(jobId, fileName, options = {}) {
     try {
@@ -110,22 +87,18 @@ class QueueService {
         {
           priority,
           delay,
-          jobId: `conversion-${jobId}`, // ID unique pour éviter les duplications
+          jobId: `conversion-${jobId}`,
         },
       );
 
-      console.log(`📥 Job ajouté à la queue: ${fileName} (ID: ${job.id})`);
+      console.log(`Job enqueued: ${fileName} (ID: ${job.id})`);
       return job;
     } catch (error) {
-      console.error("❌ Erreur lors de l'ajout à la queue:", error);
+      console.error("❌ Error enqueuing job:", error);
       throw error;
     }
   }
 
-  /**
-   * Récupère les statistiques de la queue
-   * @returns {Promise<object>} Statistiques (waiting, active, completed, failed, delayed)
-   */
   async getStats() {
     try {
       const [waiting, active, completed, failed, delayed] = await Promise.all([
@@ -145,15 +118,11 @@ class QueueService {
         total: waiting + active + completed + failed + delayed,
       };
     } catch (error) {
-      console.error("❌ Erreur lors de la récupération des stats:", error);
+      console.error("❌ Error fetching stats:", error);
       throw error;
     }
   }
 
-  /**
-   * Récupère les jobs actifs
-   * @returns {Promise<Array>} Liste des jobs en cours
-   */
   async getActiveJobs() {
     try {
       const jobs = await this.conversionQueue.getActive();
@@ -164,18 +133,11 @@ class QueueService {
         timestamp: job.timestamp,
       }));
     } catch (error) {
-      console.error(
-        "❌ Erreur lors de la récupération des jobs actifs:",
-        error,
-      );
+      console.error("❌ Error fetching active jobs:", error);
       throw error;
     }
   }
 
-  /**
-   * Récupère les jobs en attente
-   * @returns {Promise<Array>} Liste des jobs en attente
-   */
   async getWaitingJobs() {
     try {
       const jobs = await this.conversionQueue.getWaiting();
@@ -185,19 +147,11 @@ class QueueService {
         timestamp: job.timestamp,
       }));
     } catch (error) {
-      console.error(
-        "❌ Erreur lors de la récupération des jobs en attente:",
-        error,
-      );
+      console.error("❌ Error fetching waiting jobs:", error);
       throw error;
     }
   }
 
-  /**
-   * Récupère les jobs échoués
-   * @param {number} limit - Nombre maximum de jobs à retourner
-   * @returns {Promise<Array>} Liste des jobs échoués
-   */
   async getFailedJobs(limit = 20) {
     try {
       const jobs = await this.conversionQueue.getFailed(0, limit - 1);
@@ -210,91 +164,63 @@ class QueueService {
         attemptsMade: job.attemptsMade,
       }));
     } catch (error) {
-      console.error(
-        "❌ Erreur lors de la récupération des jobs échoués:",
-        error,
-      );
+      console.error("❌ Error fetching failed jobs:", error);
       throw error;
     }
   }
 
-  /**
-   * Nettoie les anciens jobs (complétés et échoués)
-   * @param {number} grace - Période de grâce en millisecondes (défaut: 24h)
-   * @returns {Promise<void>}
-   */
   async cleanOldJobs(grace = 24 * 60 * 60 * 1000) {
     try {
       await this.conversionQueue.clean(grace, "completed");
       await this.conversionQueue.clean(grace, "failed");
-      console.log(
-        `🧹 Nettoyage des jobs terminés depuis plus de ${grace / 1000 / 60 / 60}h`,
-      );
+      console.log(`Cleaned jobs older than ${grace / 1000 / 60 / 60}h`);
     } catch (error) {
-      console.error("❌ Erreur lors du nettoyage des jobs:", error);
+      console.error("❌ Error cleaning jobs:", error);
       throw error;
     }
   }
 
-  /**
-   * Vide complètement la queue (tous les jobs)
-   * ⚠️ Utiliser avec précaution!
-   * @returns {Promise<void>}
-   */
   async emptyQueue() {
     try {
       await this.conversionQueue.empty();
-      console.log("🗑️ Queue vidée complètement");
+      console.log("Queue emptied");
     } catch (error) {
-      console.error("❌ Erreur lors du vidage de la queue:", error);
+      console.error("❌ Error emptying queue:", error);
       throw error;
     }
   }
 
-  /**
-   * Pause la queue (arrête le traitement des nouveaux jobs)
-   * @returns {Promise<void>}
-   */
   async pause() {
     try {
       await this.conversionQueue.pause();
-      console.log("⏸️ Queue mise en pause");
+      console.log("Queue paused");
     } catch (error) {
-      console.error("❌ Erreur lors de la pause de la queue:", error);
+      console.error("❌ Error pausing queue:", error);
       throw error;
     }
   }
 
-  /**
-   * Reprend le traitement de la queue
-   * @returns {Promise<void>}
-   */
   async resume() {
     try {
       await this.conversionQueue.resume();
-      console.log("▶️ Queue reprise");
+      console.log("Queue resumed");
     } catch (error) {
-      console.error("❌ Erreur lors de la reprise de la queue:", error);
+      console.error("❌ Error resuming queue:", error);
       throw error;
     }
   }
 
-  /**
-   * Ferme proprement la queue
-   * @returns {Promise<void>}
-   */
   async close() {
     try {
       await this.conversionQueue.close();
-      console.log("🛑 Queue fermée");
+      console.log("Queue closed");
     } catch (error) {
-      console.error("❌ Erreur lors de la fermeture de la queue:", error);
+      console.error("❌ Error closing queue:", error);
       throw error;
     }
   }
 }
 
-// Singleton instance
 const queueService = new QueueService();
 
 export default queueService;

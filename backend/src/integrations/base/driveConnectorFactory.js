@@ -1,16 +1,7 @@
 import SharePointConnector from '../sharepoint/sharepointConnector.js'
 import GoogleDriveConnector from '../googledrive/googledriveConnector.js'
 
-/**
- * Factory pour créer les connecteurs de drives appropriés
- */
 class DriveConnectorFactory {
-  /**
-   * Crée un connecteur basé sur la plateforme
-   * @param {string} platform - Type de plateforme ('sharepoint', 'googledrive', 'onedrive')
-   * @param {object} config - Configuration du connecteur
-   * @returns {DriveConnector} - Instance du connecteur approprié
-   */
   static createConnector(platform, config) {
     if (!platform) {
       throw new Error('Platform is required')
@@ -31,7 +22,7 @@ class DriveConnectorFactory {
         return new GoogleDriveConnector(config)
       
       case 'onedrive':
-        // OneDrive utilise la même API que SharePoint (Microsoft Graph)
+        // OneDrive uses the same Microsoft Graph API as SharePoint
         return new SharePointConnector({
           ...config,
           isOneDrive: true
@@ -42,28 +33,14 @@ class DriveConnectorFactory {
     }
   }
 
-  /**
-   * Retourne la liste des plateformes supportées
-   * @returns {Array<string>} - Liste des plateformes
-   */
   static getSupportedPlatforms() {
     return ['sharepoint', 'googledrive', 'onedrive']
   }
 
-  /**
-   * Valide qu'une plateforme est supportée
-   * @param {string} platform - Plateforme à valider
-   * @returns {boolean} - True si supportée
-   */
   static isPlatformSupported(platform) {
     return this.getSupportedPlatforms().includes(platform.toLowerCase())
   }
 
-  /**
-   * Retourne les champs de configuration requis pour une plateforme
-   * @param {string} platform - Plateforme
-   * @returns {object} - Schéma de configuration
-   */
   static getConfigSchema(platform) {
     const normalizedPlatform = platform.toLowerCase()
 
@@ -105,24 +82,16 @@ class DriveConnectorFactory {
     }
   }
 
-  /**
-   * Valide la configuration pour une plateforme donnée
-   * @param {string} platform - Plateforme
-   * @param {object} config - Configuration à valider
-   * @returns {object} - Résultat de validation { valid: boolean, errors: Array<string> }
-   */
   static validateConfig(platform, config) {
     try {
       const schema = this.getConfigSchema(platform)
       const errors = []
 
-      // Fonction récursive pour valider un objet contre un schéma
       function validateObject(obj, schemaObj, path = '') {
         for (const [key, schemaValue] of Object.entries(schemaObj)) {
           const currentPath = path ? `${path}.${key}` : key
           
           if (typeof schemaValue === 'object' && schemaValue.required !== undefined) {
-            // C'est une propriété avec des règles
             if (schemaValue.required && !obj[key]) {
               errors.push(`Missing required field: ${currentPath}`)
             } else if (obj[key] && schemaValue.type) {
@@ -132,7 +101,6 @@ class DriveConnectorFactory {
               }
             }
           } else if (typeof schemaValue === 'object') {
-            // C'est un objet imbriqué
             if (obj[key]) {
               validateObject(obj[key], schemaValue, currentPath)
             }

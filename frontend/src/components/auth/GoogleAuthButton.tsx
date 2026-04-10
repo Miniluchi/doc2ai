@@ -20,7 +20,7 @@ export function GoogleAuthButton({
       await connect();
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "Erreur de connexion";
+        err instanceof Error ? err.message : "Connection error";
       onAuthError?.(errorMessage);
     }
   };
@@ -29,14 +29,12 @@ export function GoogleAuthButton({
     disconnect();
   };
 
-  // Effet pour notifier le parent quand l'authentification réussit
   React.useEffect(() => {
     if (user && onAuthSuccess) {
       onAuthSuccess(user.refreshToken, user.email);
     }
   }, [user, onAuthSuccess]);
 
-  // Effet pour notifier le parent en cas d'erreur
   React.useEffect(() => {
     if (error && onAuthError) {
       onAuthError(error);
@@ -85,7 +83,7 @@ export function GoogleAuthButton({
         {isConnecting ? (
           <>
             <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-            Connexion en cours...
+            Connecting...
           </>
         ) : (
           <>
@@ -109,7 +107,7 @@ export function GoogleAuthButton({
                 />
               </svg>
             </div>
-            Se connecter avec Google
+            Sign in with Google
           </>
         )}
       </Button>
