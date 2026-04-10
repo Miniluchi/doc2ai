@@ -55,7 +55,6 @@ class SourceController {
     try {
       const { name, platform, config } = req.body;
 
-      // Validation basique
       if (!name || !platform || !config) {
         return res.status(400).json({
           success: false,
@@ -63,7 +62,6 @@ class SourceController {
         });
       }
 
-      // Validation du platform
       const supportedPlatforms = ["sharepoint", "googledrive", "onedrive"];
       if (!supportedPlatforms.includes(platform)) {
         return res.status(400).json({
@@ -143,7 +141,6 @@ class SourceController {
     try {
       const { platform, credentials, sourcePath, siteUrl } = req.body;
 
-      // Validation basique
       if (!platform || !credentials) {
         return res.status(400).json({
           success: false,
@@ -151,7 +148,6 @@ class SourceController {
         });
       }
 
-      // Validation du platform
       const supportedPlatforms = ["sharepoint", "googledrive", "onedrive"];
       if (!supportedPlatforms.includes(platform)) {
         return res.status(400).json({
@@ -177,7 +173,7 @@ class SourceController {
         return res.status(401).json({
           success: false,
           code: "TOKEN_EXPIRED",
-          message: "Votre session Google a expiré, veuillez vous reconnecter",
+          message: "Your Google session has expired, please reconnect",
         });
       }
       res.status(500).json({
@@ -204,7 +200,7 @@ class SourceController {
         return res.status(401).json({
           success: false,
           code: "TOKEN_EXPIRED",
-          message: "Votre session Google a expiré, veuillez vous reconnecter",
+          message: "Your Google session has expired, please reconnect",
         });
       }
       res.status(500).json({
@@ -282,7 +278,7 @@ class SourceController {
         return res.status(401).json({
           success: false,
           code: "TOKEN_EXPIRED",
-          message: "Votre session Google a expiré, veuillez vous reconnecter",
+          message: "Your Google session has expired, please reconnect",
         });
       }
       res.status(500).json({
@@ -325,7 +321,7 @@ class SourceController {
         return res.status(401).json({
           success: false,
           code: "TOKEN_EXPIRED",
-          message: "Votre session Google a expiré, veuillez vous reconnecter",
+          message: "Your Google session has expired, please reconnect",
         });
       }
       res.status(500).json({

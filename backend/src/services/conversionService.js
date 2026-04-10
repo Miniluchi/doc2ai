@@ -58,7 +58,6 @@ class ConversionService {
         throw new Error("Conversion job not found");
       }
 
-      // Parse et valide la configuration de la source
       if (job.source) {
         job.source = enrichSourceWithConfig(job.source);
       }
@@ -70,6 +69,14 @@ class ConversionService {
     }
   }
 
+  /**
+   * Create a new pending ConversionJob record in the database.
+   * @param {string} sourceId - ID of the parent Source
+   * @param {string} fileName - Original file name
+   * @param {string} filePath - Local path to the downloaded file
+   * @param {number|null} [fileSize] - File size in bytes
+   * @returns {Promise<object>} Created job with source relation
+   */
   async createJob(sourceId, fileName, filePath, fileSize = null) {
     try {
       const job = await prisma.conversionJob.create({
@@ -85,12 +92,11 @@ class ConversionService {
         },
       });
 
-      // Parse et valide la configuration de la source
       if (job.source) {
         job.source = enrichSourceWithConfig(job.source);
       }
 
-      console.log(`📋 Conversion job created: ${fileName}`);
+      console.log(`Conversion job created: ${fileName}`);
       return job;
     } catch (error) {
       console.error("Error creating job:", error);
@@ -98,15 +104,20 @@ class ConversionService {
     }
   }
 
+  /**
+   * Execute a conversion job: download → convert → export → mark complete.
+   * Updates job status and progress in the database throughout.
+   * @param {string} jobId - ConversionJob DB id
+   * @returns {Promise<object>} Completed job record
+   * @throws {Error} On conversion failure (job is also marked as failed in DB)
+   */
   async processJob(jobId) {
     let job;
     try {
       job = await this.getJobById(jobId);
 
-      // Sauvegarder la config parsée avant l'update
       const parsedConfig = job.source.config;
 
-      // Marquer comme en cours
       job = await prisma.conversionJob.update({
         where: { id: jobId },
         data: {
@@ -117,29 +128,22 @@ class ConversionService {
         include: { source: true },
       });
 
-      // Restaurer la config parsée
       job.source.config = parsedConfig;
 
-      console.log(`🔄 Processing job: ${job.fileName}`);
+      console.log(`Processing job: ${job.fileName}`);
 
-      // Déterminer le type de fichier depuis le chemin téléchargé (pas fileName qui peut ne pas avoir d'extension pour Google Docs)
       const fileExtension = path.extname(job.filePath).toLowerCase();
-
-      // Obtenir le convertisseur approprié
       const converter = ConverterFactory.getConverter(fileExtension);
 
       if (!converter) {
         throw new Error(`Unsupported file format: ${fileExtension}`);
       }
 
-      // Mettre à jour le progrès
       await this.updateJobProgress(jobId, 30, "Initializing converter");
 
-      // Créer les dossiers de destination
       await fs.ensureDir(config.storagePath);
       await fs.ensureDir(config.tempPath);
 
-      // Définir le chemin de sortie avec destination validée
       const outputFileName = path.basename(job.fileName, fileExtension) + ".md";
       const destinationFolder = getValidatedDestination(
         job.source.config,
@@ -153,28 +157,22 @@ class ConversionService {
 
       await fs.ensureDir(path.dirname(outputPath));
 
-      // Mettre à jour le progrès
       await this.updateJobProgress(jobId, 50, "Converting file");
-
-      // Effectuer la conversion
       const result = await converter.convert(job.filePath, outputPath);
 
       if (!result.success) {
         throw new Error(result.error || "Conversion failed");
       }
 
-      // Mettre à jour le progrès
       await this.updateJobProgress(
         jobId,
         80,
         "Exporting to configured destination",
       );
 
-      // Export vers la destination configurée (une seule destination)
       try {
         await fs.ensureDir(config.exportPath);
 
-        // Récupérer et valider la destination configurée
         const destination = getValidatedDestination(
           job.source.config,
           job.source.name,
@@ -188,7 +186,7 @@ class ConversionService {
 
         await fs.ensureDir(path.dirname(exportFilePath));
         await fs.copy(outputPath, exportFilePath);
-        console.log(`📁 File exported to: ${exportFilePath}`);
+        console.log(`File exported to: ${exportFilePath}`);
       } catch (error) {
         console.warn(
           `Warning: Failed to export to configured destination:`,
@@ -196,7 +194,6 @@ class ConversionService {
         );
       }
 
-      // Marquer comme terminé
       const completedJob = await prisma.conversionJob.update({
         where: { id: jobId },
         data: {
@@ -207,7 +204,6 @@ class ConversionService {
         },
       });
 
-      // Enregistrer le fichier converti
       await prisma.convertedFile.create({
         data: {
           originalPath: job.filePath,
@@ -219,12 +215,11 @@ class ConversionService {
         },
       });
 
-      console.log(`✅ Job completed: ${job.fileName}`);
+      console.log(`Job completed: ${job.fileName}`);
       return completedJob;
     } catch (error) {
       console.error(`❌ Job failed: ${job?.fileName || jobId}`, error);
 
-      // Marquer comme échoué
       await prisma.conversionJob
         .update({
           where: { id: jobId },
@@ -234,7 +229,7 @@ class ConversionService {
             completedAt: new Date(),
           },
         })
-        .catch(() => null); // Ignore si la mise à jour échoue
+        .catch(() => null);
 
       throw error;
     }
@@ -250,7 +245,7 @@ class ConversionService {
       });
 
       if (message) {
-        console.log(`📊 Job ${jobId}: ${progress}% - ${message}`);
+        console.log(`Job ${jobId}: ${progress}% - ${message}`);
       }
     } catch (error) {
       console.error("Error updating job progress:", error);
@@ -271,7 +266,7 @@ class ConversionService {
         },
       });
 
-      console.log(`❌ Job cancelled: ${job.fileName}`);
+      console.log(`Job cancelled: ${job.fileName}`);
       return job;
     } catch (error) {
       console.error("Error cancelling job:", error);
@@ -296,16 +291,12 @@ class ConversionService {
         },
       });
 
-      // Note: Prisma ne supporte pas directement la différence de dates
-      // On skip cette partie pour éviter l'erreur
-
       return {
         byStatus: stats.reduce((acc, stat) => {
           acc[stat.status] = stat._count._all;
           return acc;
         }, {}),
         recent,
-        // avgProcessingTimeMs: avgProcessingTime // À implémenter
       };
     } catch (error) {
       console.error("Error fetching job stats:", error);
@@ -327,7 +318,7 @@ class ConversionService {
         },
       });
 
-      console.log(`🧹 Cleaned up ${result.count} old conversion jobs`);
+      console.log(`Cleaned up ${result.count} old conversion jobs`);
       return result.count;
     } catch (error) {
       console.error("Error cleaning up jobs:", error);

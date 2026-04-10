@@ -33,16 +33,18 @@ class MonitoringService {
     return { parsedConfig, decryptedConfig };
   }
 
+  /**
+   * Start the monitoring service: connects all active sources and schedules periodic syncs.
+   */
   async start() {
     try {
       if (this.isRunning) {
-        console.log("⚠️ Monitoring service is already running");
+        console.warn("⚠️ Monitoring service is already running");
         return;
       }
 
-      console.log("🚀 Starting monitoring service...");
+      console.log("Starting monitoring service...");
 
-      // Démarrer le monitoring pour toutes les sources actives
       const activeSources = await prisma.source.findMany({
         where: { status: "active" },
       });
@@ -51,13 +53,10 @@ class MonitoringService {
         await this.startSourceMonitoring(source);
       }
 
-      // Démarrer le cron job pour la synchronisation périodique
       this.startCronJob();
 
       this.isRunning = true;
-      console.log(
-        `✅ Monitoring service started for ${activeSources.length} sources`,
-      );
+      console.log(`Monitoring service started for ${activeSources.length} sources`);
     } catch (error) {
       console.error("❌ Failed to start monitoring service:", error);
       throw error;
@@ -66,21 +65,19 @@ class MonitoringService {
 
   async stop() {
     try {
-      console.log("🛑 Stopping monitoring service...");
+      console.log("Stopping monitoring service...");
 
-      // Arrêter tous les monitors actifs
       for (const [sourceId] of this.activeMonitors) {
         await this.stopSourceMonitoring(sourceId);
       }
 
-      // Arrêter le cron job
       if (this.cronJob) {
         this.cronJob.destroy();
         this.cronJob = null;
       }
 
       this.isRunning = false;
-      console.log("✅ Monitoring service stopped");
+      console.log("Monitoring service stopped");
     } catch (error) {
       console.error("❌ Failed to stop monitoring service:", error);
       throw error;
@@ -88,13 +85,12 @@ class MonitoringService {
   }
 
   startCronJob() {
-    // Synchronisation périodique toutes les X minutes (configuré via env)
     const cronExpression = `*/${config.syncIntervalMinutes} * * * *`;
 
     this.cronJob = cron.schedule(
       cronExpression,
       async () => {
-        console.log("⏰ Running scheduled sync...");
+        console.log("Running scheduled sync...");
         await this.syncAllActiveSources();
       },
       {
@@ -103,37 +99,35 @@ class MonitoringService {
       },
     );
 
-    console.log(
-      `📅 Cron job scheduled: every ${config.syncIntervalMinutes} minutes`,
-    );
+    console.log(`Cron job scheduled: every ${config.syncIntervalMinutes} minutes`);
   }
 
+  /**
+   * Initialize monitoring for a single source: authenticate, test connection, and register the active monitor.
+   * @param {object} source - Prisma Source record
+   */
   async startSourceMonitoring(source) {
     try {
-      console.log(`🔍 Starting monitoring for: ${source.name}`);
+      console.log(`Starting monitoring for: ${source.name}`);
 
       const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
-      // Créer le connecteur
       const connector = DriveConnectorFactory.createConnector(
         source.platform,
         decryptedConfig,
       );
 
-      // Tester la connexion
       const connectionTest = await connector.testConnection();
       if (!connectionTest.success) {
         throw new Error(`Connection failed: ${connectionTest.message}`);
       }
 
-      // Stocker le monitor actif
       this.activeMonitors.set(source.id, {
         source,
         connector,
         lastCheck: new Date(),
       });
 
-      // Log de démarrage
       await prisma.syncLog.create({
         data: {
           sourceId: source.id,
@@ -145,7 +139,6 @@ class MonitoringService {
     } catch (error) {
       console.error(`❌ Failed to start monitoring for ${source.name}:`, error);
 
-      // Log de l'erreur
       await prisma.syncLog.create({
         data: {
           sourceId: source.id,
@@ -165,9 +158,8 @@ class MonitoringService {
         return;
       }
 
-      console.log(`🛑 Stopping monitoring for: ${monitor.source.name}`);
+      console.log(`Stopping monitoring for: ${monitor.source.name}`);
 
-      // Nettoyer les ressources si nécessaire
       if (
         monitor.connector &&
         typeof monitor.connector.cleanup === "function"
@@ -177,7 +169,6 @@ class MonitoringService {
 
       this.activeMonitors.delete(sourceId);
 
-      // Log d'arrêt
       await prisma.syncLog.create({
         data: {
           sourceId,
@@ -206,10 +197,14 @@ class MonitoringService {
     }
   }
 
+  /**
+   * Sync a source: list remote files, filter by config, and enqueue conversion jobs for new/changed files.
+   * Skips if a sync is already in progress for this source.
+   * @param {string} sourceId - Source DB id
+   */
   async syncSource(sourceId) {
-    // Guard against concurrent syncs on the same source
     if (this.syncInProgress.has(sourceId)) {
-      console.log(`⚠️ Sync already in progress for source: ${sourceId}`);
+      console.warn(`⚠️ Sync already in progress for source: ${sourceId}`);
       return;
     }
 
@@ -234,12 +229,10 @@ class MonitoringService {
       let connector;
 
       if (monitor) {
-        // Sync automatique : utiliser le connecteur existant, mais rafraîchir les données source
         connector = monitor.connector;
         monitor.source = source;
       } else {
-        // Sync manuelle : créer un connecteur temporaire
-        console.log(`🔄 Manual sync for source: ${sourceId}`);
+        console.log(`Manual sync for source: ${sourceId}`);
 
         const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
@@ -250,16 +243,14 @@ class MonitoringService {
         await connector.authenticate();
       }
 
-      console.log(`🔄 Syncing source: ${source.name}`);
+      console.log(`Syncing source: ${source.name}`);
 
-      // Parser le config une seule fois pour les filtres et le chemin
       const { parsedConfig } = this._parseAndDecryptConfig(source);
 
-      // Obtenir la liste des fichiers du drive
       const sourcePath = parsedConfig.sourcePath || "/";
       const files = await connector.listFiles(sourcePath);
 
-      // Normaliser les filtres (peuvent être des objets {"0":".docx",...} au lieu de tableaux)
+      // Normalize filters (may be objects {"0":".docx",...} instead of arrays)
       const rawExtensions = parsedConfig.filters?.extensions;
       const supportedExtensions = Array.isArray(rawExtensions)
         ? rawExtensions
@@ -274,7 +265,7 @@ class MonitoringService {
           ? Object.values(rawExclude)
           : [];
 
-      // Map Google Apps mimeTypes vers leurs extensions équivalentes
+      // Map Google Apps mimeTypes to their equivalent extensions
       const googleMimeToExt = {
         "application/vnd.google-apps.document": ".docx",
         "application/vnd.google-apps.spreadsheet": ".xlsx",
@@ -282,19 +273,19 @@ class MonitoringService {
       };
 
       const filteredFiles = files.filter((file) => {
-        // Vérifier par extension du nom de fichier
+        // Check by file name extension
         const hasValidExtension = supportedExtensions.some((ext) =>
           file.name.toLowerCase().endsWith(ext.toLowerCase()),
         );
 
-        // Ou par mimeType Google Apps (ces fichiers n'ont pas d'extension dans leur nom)
+        // Or by Google Apps mimeType (these files have no extension in their name)
         const googleExt = googleMimeToExt[file.mimeType];
         const matchesGoogleType = googleExt &&
           supportedExtensions.some((ext) => ext.toLowerCase() === googleExt);
 
         if (!hasValidExtension && !matchesGoogleType) return false;
 
-        // Vérifier les patterns d'exclusion
+        // Check exclusion patterns
         const isExcluded = excludePatterns.some((pattern) =>
           file.name.match(new RegExp(pattern)),
         );
@@ -302,24 +293,21 @@ class MonitoringService {
         return !isExcluded;
       });
 
-      console.log(`📁 Found ${filteredFiles.length} files to process`);
+      console.log(`Found ${filteredFiles.length} files to process`);
 
       for (const file of filteredFiles) {
         await this.processFileChange(sourceId, file, connector);
       }
 
-      // Mettre à jour le timestamp de dernière sync
       await prisma.source.update({
         where: { id: sourceId },
         data: { lastSync: new Date() },
       });
 
-      // Mettre à jour le monitor si présent
       if (monitor) {
         monitor.lastCheck = new Date();
       }
 
-      // Log de succès
       await prisma.syncLog.create({
         data: {
           sourceId,
@@ -354,7 +342,6 @@ class MonitoringService {
 
   async processFileChange(sourceId, file, connector) {
     try {
-      // Vérifier si le fichier a déjà été traité
       const existingFile = await prisma.convertedFile.findFirst({
         where: {
           originalPath: file.path,
@@ -362,17 +349,14 @@ class MonitoringService {
         },
       });
 
-      // Si le fichier existe et n'a pas été modifié, passer
       if (existingFile && existingFile.checksum === file.checksum) {
         return;
       }
 
-      console.log(`📄 Processing file: ${file.name}`);
+      console.log(`Processing file: ${file.name}`);
 
-      // Télécharger le fichier temporairement
       const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
-      // Créer un job de conversion
       const job = await this.conversionService.createJob(
         sourceId,
         file.name,
@@ -380,16 +364,12 @@ class MonitoringService {
         file.size,
       );
 
-      // Ajouter le job à la queue asynchrone pour traitement en arrière-plan
       await queueService.enqueueConversion(job.id, file.name);
 
-      console.log(
-        `📥 Job ajouté à la queue pour traitement asynchrone: ${file.name}`,
-      );
+      console.log(`Job queued for async processing: ${file.name}`);
     } catch (error) {
       console.error(`❌ Failed to process file ${file.name}:`, error);
 
-      // Log de l'erreur
       await prisma.syncLog.create({
         data: {
           sourceId,

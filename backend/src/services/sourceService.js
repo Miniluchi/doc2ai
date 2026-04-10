@@ -22,7 +22,6 @@ class SourceService {
         },
       });
 
-      // Déchiffrer les credentials pour l'affichage (sans les exposer complètement)
       return sources.map((source) => {
         const parsedConfig = JSON.parse(source.config);
         return {
@@ -57,7 +56,6 @@ class SourceService {
         throw new Error("Source not found");
       }
 
-      // Parse la config JSON
       return {
         ...source,
         config: JSON.parse(source.config),
@@ -68,16 +66,19 @@ class SourceService {
     }
   }
 
+  /**
+   * Create a new source with encrypted credentials.
+   * @param {object} sourceData - { name, platform, config: { credentials, sourcePath, destination, filters } }
+   * @returns {Promise<object>} Created Prisma Source record
+   */
   async createSource(sourceData) {
     try {
       const { name, platform, config } = sourceData;
 
-      // Validation des données
       if (!name || !platform || !config) {
         throw new Error("Missing required fields: name, platform, config");
       }
 
-      // Chiffrement des credentials
       const encryptedConfig = {
         ...config,
         credentials: config.credentials
@@ -94,7 +95,7 @@ class SourceService {
         },
       });
 
-      console.log(`✅ Source created: ${name} (${platform})`);
+      console.log(`Source created: ${name} (${platform})`);
       return source;
     } catch (error) {
       console.error("Error creating source:", error);
@@ -106,7 +107,6 @@ class SourceService {
     try {
       const existingSource = await this.getSourceById(id);
 
-      // Chiffrement des nouvelles credentials si fournies
       const updatedConfig = updateData.config
         ? {
             ...existingSource.config,
@@ -126,7 +126,7 @@ class SourceService {
         },
       });
 
-      console.log(`✅ Source updated: ${source.name}`);
+      console.log(`Source updated: ${source.name}`);
       return source;
     } catch (error) {
       console.error("Error updating source:", error);
@@ -140,7 +140,7 @@ class SourceService {
         where: { id },
       });
 
-      console.log(`✅ Source deleted: ${id}`);
+      console.log(`Source deleted: ${id}`);
       return { success: true };
     } catch (error) {
       console.error("Error deleting source:", error);
@@ -148,39 +148,29 @@ class SourceService {
     }
   }
 
+  /**
+   * Test raw credentials against a platform without persisting a source.
+   * @param {object} testData - { platform, credentials, sourcePath, siteUrl? }
+   * @returns {Promise<object>} Connection test result { success, message, details }
+   */
   async testCredentials(testData) {
     try {
       const { platform, credentials, sourcePath, siteUrl } = testData;
 
-      console.log(`🧪 Testing credentials for ${platform}:`, {
-        platform,
-        hasCredentials: !!credentials,
-        credentialsKeys: credentials ? Object.keys(credentials) : [],
-        sourcePath: sourcePath || "/",
-        siteUrl,
-      });
-
-      // Préparer la config pour le test avec la bonne structure
       const testConfig = {
-        credentials, // Les credentials doivent être dans config.credentials
+        credentials,
         sourcePath: sourcePath || "/",
         ...(siteUrl && { siteUrl }),
       };
 
-      // Créer le connecteur approprié
       const connector = DriveConnectorFactory.createConnector(
         platform,
         testConfig,
       );
 
-      // Test de connexion
       const result = await connector.testConnection();
 
-      console.log(
-        `🧪 Credentials test for ${platform}:`,
-        result.success ? "✅ Success" : "❌ Failed",
-        result,
-      );
+      console.log(`Credentials test for ${platform}: ${result.success ? "success" : "failed"}`);
 
       return result;
     } catch (error) {
@@ -188,7 +178,7 @@ class SourceService {
 
       return {
         success: false,
-        message: error.message || "Test des identifiants échoué",
+        message: error.message || "Credentials test failed",
         details: {
           platform: testData.platform,
           error: error.name || "Unknown error",
@@ -201,7 +191,6 @@ class SourceService {
     try {
       const source = await this.getSourceById(id);
 
-      // Déchiffrer les credentials pour le test
       const decryptedConfig = {
         ...source.config,
         credentials: source.config.credentials
@@ -209,16 +198,13 @@ class SourceService {
           : null,
       };
 
-      // Créer le connecteur approprié
       const connector = DriveConnectorFactory.createConnector(
         source.platform,
         decryptedConfig,
       );
 
-      // Test de connexion
       const result = await connector.testConnection();
 
-      // Log du résultat
       await prisma.syncLog.create({
         data: {
           sourceId: id,
@@ -233,7 +219,6 @@ class SourceService {
     } catch (error) {
       console.error("Connection test failed:", error);
 
-      // Log de l'erreur
       await prisma.syncLog.create({
         data: {
           sourceId: id,
@@ -250,11 +235,10 @@ class SourceService {
 
   async syncSource(id) {
     try {
-      // Importer dynamiquement pour éviter les dépendances circulaires
+      // Dynamic import to avoid circular dependencies
       const monitoringService = (await import("./monitoringService.js"))
         .default;
 
-      // Utiliser la méthode de synchronisation du monitoring service
       await monitoringService.syncSource(id);
 
       return {
@@ -282,7 +266,7 @@ class SourceService {
       const recentJobs = await prisma.conversionJob.count({
         where: {
           createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24h
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
           },
         },
       });
@@ -298,11 +282,16 @@ class SourceService {
     }
   }
 
+  /**
+   * List Google Drive folders under a given parent folder.
+   * @param {string} parentId - Drive folder ID (or "root")
+   * @param {object} credentials - Google OAuth credentials
+   * @returns {Promise<object[]>} Array of folder metadata objects
+   */
   async getGoogleDriveFolders(parentId, credentials) {
     try {
-      console.log(`🔍 Fetching Google Drive folders from parent: ${parentId}`);
+      console.log(`Fetching Google Drive folders from parent: ${parentId}`);
 
-      // Créer une configuration temporaire pour le connecteur
       const config = {
         credentials: credentials,
         sourcePath: parentId,
@@ -320,7 +309,7 @@ class SourceService {
 
       await connector.cleanup();
 
-      console.log(`✅ Found ${folders.length} folders`);
+      console.log(`Found ${folders.length} folders`);
       return folders;
     } catch (error) {
       console.error("Error fetching Google Drive folders:", error);
@@ -328,17 +317,17 @@ class SourceService {
     }
   }
 
+  /**
+   * Preview convertible files in a Google Drive folder without creating jobs.
+   * @param {string} folderId - Drive folder ID
+   * @param {object} credentials - Google OAuth credentials
+   * @param {string[]|object} allowedExtensions - File extensions to include (e.g. [".docx", ".pdf"])
+   * @returns {Promise<{totalFiles: number, convertibleFiles: number, files: object[]}>}
+   */
   async previewGoogleDriveFiles(folderId, credentials, allowedExtensions) {
     try {
-      console.log(`🔍 Previewing files in Google Drive folder: ${folderId}`);
-      console.log(
-        "allowedExtensions type:",
-        typeof allowedExtensions,
-        "value:",
-        allowedExtensions,
-      );
+      console.log(`Previewing files in Google Drive folder: ${folderId}`);
 
-      // Convert allowedExtensions to array properly
       let extensionsArray;
       if (Array.isArray(allowedExtensions)) {
         extensionsArray = allowedExtensions;
@@ -346,14 +335,11 @@ class SourceService {
         typeof allowedExtensions === "object" &&
         allowedExtensions !== null
       ) {
-        // Convert object with numeric indices to array
         extensionsArray = Object.values(allowedExtensions);
       } else {
         extensionsArray = [allowedExtensions];
       }
-      console.log("extensionsArray:", extensionsArray);
 
-      // Créer une configuration temporaire pour le connecteur
       const config = {
         credentials: credentials,
         sourcePath: folderId,
@@ -369,24 +355,14 @@ class SourceService {
 
       const files = await connector.listFiles(folderId);
 
-      console.log(
-        `📋 Files found in folder ${folderId}:`,
-        files.map((f) => ({
-          name: f.name,
-          mimeType: f.mimeType,
-        })),
-      );
-
-      // Filtrer par extensions OU par mimeType (pour Google Docs natifs)
       const filteredFiles = files.filter((file) => {
         if (!file.name) {
-          console.log("❌ File without name, skipping");
           return false;
         }
         const fileName = file.name.toLowerCase();
         const mimeType = file.mimeType || "";
 
-        // 1. Vérifier si c'est un Google Doc natif (à convertir en DOCX)
+        // Check for Google native docs (will be exported as DOCX/PDF)
         const isGoogleDoc = mimeType === "application/vnd.google-apps.document";
         const isGoogleSheet =
           mimeType === "application/vnd.google-apps.spreadsheet";
@@ -394,35 +370,23 @@ class SourceService {
           mimeType === "application/vnd.google-apps.presentation";
 
         if (isGoogleDoc || isGoogleSheet || isGoogleSlide) {
-          console.log(
-            `✅ Google native file "${file.name}" (${mimeType}) - will be exported as DOCX/PDF`,
-          );
           return true;
         }
 
-        // 2. Vérifier si le fichier se termine par une des extensions autorisées
+        // Check if the file matches an allowed extension
         const matches = extensionsArray.some((ext) => {
           const extension = ext.toLowerCase().startsWith(".")
             ? ext.toLowerCase()
             : `.${ext.toLowerCase()}`;
-          const endsWith = fileName.endsWith(extension);
-          console.log(
-            `  Checking "${fileName}" ends with "${extension}": ${endsWith}`,
-          );
-          return endsWith;
+          return fileName.endsWith(extension);
         });
 
-        console.log(
-          `${matches ? "✅" : "❌"} File "${file.name}" - matches: ${matches}`,
-        );
         return matches;
       });
 
       await connector.cleanup();
 
-      console.log(
-        `✅ Found ${filteredFiles.length} convertible files out of ${files.length} total`,
-      );
+      console.log(`Found ${filteredFiles.length} convertible files out of ${files.length} total`);
 
       return {
         totalFiles: files.length,
@@ -447,14 +411,10 @@ class SourceService {
     let errorCount = 0;
 
     try {
-      console.log(
-        `🔄 Starting conversion processing for ${files.length} files`,
-      );
+      console.log(`Starting conversion processing for ${files.length} files`);
 
-      // Traiter chaque fichier
       for (const file of files) {
         try {
-          // Vérifier si le fichier a déjà été traité récemment
           const existingFile = await prisma.convertedFile.findFirst({
             where: {
               originalPath: file.path || file.id,
@@ -463,25 +423,21 @@ class SourceService {
             orderBy: { createdAt: "desc" },
           });
 
-          // Si le fichier existe et a été modifié récemment, passer
           if (existingFile && file.modifiedTime) {
             const fileModified = new Date(file.modifiedTime);
             const lastProcessed = existingFile.createdAt;
             if (fileModified <= lastProcessed) {
-              console.log(`⏭️  File ${file.name} already up to date, skipping`);
               continue;
             }
           }
 
-          console.log(`📄 Processing file: ${file.name}`);
+          console.log(`Processing file: ${file.name}`);
 
-          // Télécharger le fichier temporairement
           const tempPath = await connector.downloadFile(
             file.id,
             config.tempPath,
           );
 
-          // Créer un job de conversion
           const job = await conversionService.createJob(
             source.id,
             file.name,
@@ -489,18 +445,16 @@ class SourceService {
             file.size,
           );
 
-          console.log(`📋 Created conversion job for: ${file.name}`);
+          console.log(`Created conversion job for: ${file.name}`);
 
-          // Traiter le job immédiatement
           await conversionService.processJob(job.id);
 
           processedCount++;
-          console.log(`✅ Successfully converted: ${file.name}`);
+          console.log(`Successfully converted: ${file.name}`);
         } catch (error) {
           errorCount++;
           console.error(`❌ Failed to process file ${file.name}:`, error);
 
-          // Log de l'erreur pour ce fichier spécifique
           await prisma.syncLog.create({
             data: {
               sourceId: source.id,
@@ -516,7 +470,6 @@ class SourceService {
         }
       }
 
-      // Mettre à jour le log de sync principal
       await prisma.syncLog.update({
         where: { id: syncLogId },
         data: {
@@ -532,16 +485,13 @@ class SourceService {
         },
       });
 
-      console.log(
-        `✅ Processing completed for source: ${source.name} (${processedCount}/${files.length} files converted)`,
-      );
+      console.log(`Processing completed for source: ${source.name} (${processedCount}/${files.length} files converted)`);
     } catch (error) {
       console.error(
         `❌ Critical error during file processing for source ${source.name}:`,
         error,
       );
 
-      // Mettre à jour le log avec l'erreur critique
       await prisma.syncLog.update({
         where: { id: syncLogId },
         data: {

@@ -6,7 +6,6 @@ class AuthController {
     try {
       const { code, error } = req.query;
 
-      // Si l'utilisateur a refusé l'accès
       if (error) {
         return res.status(400).json({
           success: false,
@@ -15,7 +14,6 @@ class AuthController {
         });
       }
 
-      // Si pas de code d'autorisation
       if (!code) {
         return res.status(400).json({
           success: false,
@@ -24,7 +22,6 @@ class AuthController {
         });
       }
 
-      // Échanger le code contre un access token et refresh token
       const tokenResponse = await axios.post(
         "https://oauth2.googleapis.com/token",
         {
@@ -46,7 +43,6 @@ class AuthController {
       const { access_token, refresh_token, expires_in, scope } =
         tokenResponse.data;
 
-      // Vérifier que nous avons bien reçu un refresh token
       if (!refresh_token) {
         return res.status(400).json({
           success: false,
@@ -61,7 +57,6 @@ class AuthController {
         });
       }
 
-      // Optionnel : tester le token en récupérant les infos utilisateur
       try {
         const userInfoResponse = await axios.get(
           "https://www.googleapis.com/drive/v3/about?fields=user",
@@ -74,7 +69,6 @@ class AuthController {
 
         const userInfo = userInfoResponse.data.user;
 
-        // Rediriger vers le frontend avec les données encodées
         const successData = {
           refresh_token,
           access_token,
@@ -87,7 +81,6 @@ class AuthController {
           },
         };
 
-        // Encoder les données en base64 pour les passer dans l'URL
         const encodedData = Buffer.from(JSON.stringify(successData)).toString(
           "base64",
         );
@@ -99,7 +92,6 @@ class AuthController {
       } catch (userInfoError) {
         console.warn("Could not fetch user info:", userInfoError.message);
 
-        // Retourner les tokens même si on ne peut pas récupérer les infos utilisateur
         const fallbackData = {
           refresh_token,
           access_token,
@@ -107,7 +99,7 @@ class AuthController {
           scope,
           user: {
             email: "unknown@gmail.com",
-            name: "Utilisateur Google",
+            name: "Google User",
             photoLink: null,
           },
         };
@@ -127,7 +119,6 @@ class AuthController {
       let errorMessage = "OAuth callback failed";
       let errorDetails = error.message;
 
-      // Gestion des erreurs spécifiques de Google
       if (error.response?.data) {
         errorMessage =
           error.response.data.error_description ||
@@ -144,7 +135,7 @@ class AuthController {
     }
   }
 
-  // GET /api/auth/google - Générer l'URL d'autorisation
+  // GET /api/auth/google
   async getGoogleAuthUrl(req, res) {
     try {
       const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -156,7 +147,7 @@ class AuthController {
         response_type: "code",
         scope: "https://www.googleapis.com/auth/drive",
         access_type: "offline",
-        prompt: "consent", // Force l'affichage du consentement pour obtenir un refresh token
+        prompt: "consent",
       });
 
       const authUrl = `${baseUrl}?${params.toString()}`;
