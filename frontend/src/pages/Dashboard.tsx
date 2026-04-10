@@ -56,12 +56,11 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Erreur globale */}
       {sourcesError && (
         <Alert className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Erreur lors du chargement : {sourcesError}
+            Error loading data: {sourcesError}
           </AlertDescription>
         </Alert>
       )}
@@ -72,7 +71,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
               <Cloud className="h-5 w-5 text-blue-500" />
-              Sources connectées
+              Connected Sources
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -84,11 +83,11 @@ export default function Dashboard() {
               </div>
             )}
             <p className="text-sm text-muted-foreground">
-              Sources documentaires configurées
+              Configured document sources
             </p>
             {sourceStats && sourceStats.activeSources > 0 && (
               <Badge variant="outline" className="mt-2">
-                {sourceStats.activeSources} actives
+                {sourceStats.activeSources} active
               </Badge>
             )}
           </CardContent>
@@ -98,7 +97,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
               <Download className="h-5 w-5 text-green-500" />
-              Fichiers convertis
+              Converted Files
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -106,7 +105,7 @@ export default function Dashboard() {
               {conversionStats?.recent ?? 0}
             </div>
             <p className="text-sm text-muted-foreground">
-              Dernières 24 heures
+              Last 24 hours
             </p>
           </CardContent>
         </Card>
@@ -115,7 +114,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-center gap-2">
               <Activity className="h-5 w-5 text-orange-500" />
-              Statut système
+              System Status
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -126,12 +125,12 @@ export default function Dashboard() {
                     monitoringStatus.isRunning ? "default" : "secondary"
                   }
                 >
-                  {monitoringStatus.isRunning ? "Actif" : "Inactif"}
+                  {monitoringStatus.isRunning ? "Active" : "Inactive"}
                 </Badge>
                 <p className="text-sm text-muted-foreground mt-2">
                   {monitoringStatus.isRunning
-                    ? `${monitoringStatus.totalActiveSources} sources surveillées`
-                    : "Monitoring arrêté"}
+                    ? `${monitoringStatus.totalActiveSources} sources monitored`
+                    : "Monitoring stopped"}
                 </p>
               </>
             ) : (
@@ -148,20 +147,19 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Sources documentaires</h2>
+            <h2 className="text-2xl font-semibold">Document Sources</h2>
             <p className="text-muted-foreground">
-              Configurez vos drives cloud et dépôts de documents
+              Configure your cloud drives and document repositories
             </p>
           </div>
           <AddSourceDialog onSourceAdded={handleSourceAdded}>
             <Button>
               <Plus className="h-4 w-4" />
-              Ajouter une source
+              Add source
             </Button>
           </AddSourceDialog>
         </div>
 
-        {/* Loading state */}
         {sourcesLoading && (
           <div className="grid gap-4">
             {[1, 2, 3].map((i) => (
@@ -186,30 +184,28 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Empty State */}
         {!sourcesLoading && sources.length === 0 && (
           <Card className="p-12 text-center">
             <CardContent>
               <Cloud className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <CardTitle className="mb-2">
-                Aucune source documentaire
+                No document sources
               </CardTitle>
               <CardDescription className="mb-6 max-w-md mx-auto">
-                Commencez par connecter votre première source documentaire.
-                Support pour Microsoft SharePoint, Google Drive et autres
-                plateformes de stockage cloud.
+                Start by connecting your first document source.
+                Support for Microsoft SharePoint, Google Drive, and other
+                cloud storage platforms.
               </CardDescription>
               <AddSourceDialog onSourceAdded={handleSourceAdded}>
                 <Button size="lg">
                   <Plus className="h-4 w-4" />
-                  Ajouter votre première source
+                  Add your first source
                 </Button>
               </AddSourceDialog>
             </CardContent>
           </Card>
         )}
 
-        {/* Sources List */}
         {!sourcesLoading && sources.length > 0 && (
           <div className="grid gap-4">
             {sources.map((source) => (

@@ -64,7 +64,7 @@ const AuthCallback: React.FC = () => {
           window.opener.postMessage(
             {
               type: "GOOGLE_AUTH_ERROR",
-              error: "Erreur lors du traitement de l'authentification",
+              error: "Error processing authentication",
             },
             window.location.origin,
           );
@@ -89,9 +89,9 @@ const AuthCallback: React.FC = () => {
               <div className="mx-auto mb-2">
                 <CheckCircle className="h-12 w-12 text-green-500" />
               </div>
-              <CardTitle>Authentification réussie</CardTitle>
+              <CardTitle>Authentication Successful</CardTitle>
               <CardDescription>
-                Votre compte Google a été connecté avec succès.
+                Your Google account has been connected successfully.
               </CardDescription>
             </>
           ) : error ? (
@@ -100,7 +100,7 @@ const AuthCallback: React.FC = () => {
                 <XCircle className="h-12 w-12 text-destructive" />
               </div>
               <CardTitle className="text-destructive">
-                Erreur d'authentification
+                Authentication Error
               </CardTitle>
               <CardDescription>{error}</CardDescription>
             </>
@@ -109,10 +109,9 @@ const AuthCallback: React.FC = () => {
               <div className="mx-auto mb-2">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
               </div>
-              <CardTitle>Traitement en cours...</CardTitle>
+              <CardTitle>Processing...</CardTitle>
               <CardDescription>
-                Veuillez patienter pendant que nous traitons votre
-                authentification.
+                Please wait while we process your authentication.
               </CardDescription>
             </>
           )}
@@ -122,7 +121,7 @@ const AuthCallback: React.FC = () => {
           {success === "true" && (
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Redirection automatique...</span>
+              <span>Redirecting...</span>
             </div>
           )}
 
@@ -133,7 +132,7 @@ const AuthCallback: React.FC = () => {
               className="w-full"
             >
               <ArrowLeft className="h-4 w-4" />
-              Retourner à l'application
+              Return to application
             </Button>
           )}
         </CardContent>

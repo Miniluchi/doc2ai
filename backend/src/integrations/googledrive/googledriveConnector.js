@@ -3,10 +3,6 @@ import axios from "axios";
 import fs from "fs-extra";
 import path from "path";
 
-/**
- * Connecteur pour Google Drive
- * Utilise Google Drive API v3
- */
 class GoogleDriveConnector extends DriveConnector {
   constructor(config) {
     super(config);
@@ -15,16 +11,12 @@ class GoogleDriveConnector extends DriveConnector {
     this.baseUrl = "https://www.googleapis.com/drive/v3";
   }
 
-  /**
-   * Authentifie avec Google Drive API
-   */
   async authenticate() {
     try {
       this.validateConfig();
 
       const { clientId, clientSecret, refreshToken } = this.config.credentials;
 
-      // Obtenir un access token via refresh token
       const tokenUrl = "https://oauth2.googleapis.com/token";
 
       const params = {
@@ -56,14 +48,10 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Test de connexion
-   */
   async testConnection() {
     try {
       await this.authenticate();
 
-      // Tester l'accès à l'API en récupérant les infos utilisateur
       const response = await this.makeAuthenticatedRequest(
         "https://www.googleapis.com/drive/v3/about?fields=user,storageQuota",
       );
@@ -92,9 +80,6 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Liste les dossiers dans un répertoire
-   */
   async listFolders(folderId = "root") {
     try {
       await this.ensureAuthenticated();
@@ -127,14 +112,10 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Liste les fichiers dans un dossier
-   */
   async listFiles(folderId = "root", limit = null) {
     try {
       await this.ensureAuthenticated();
 
-      // Construire la requête
       const params = {
         q: `'${folderId}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`,
         fields:
@@ -159,7 +140,7 @@ class GoogleDriveConnector extends DriveConnector {
         this.normalizeFileInfo({
           id: file.id,
           name: file.name,
-          path: `/${file.name}`, // Google Drive n'a pas de structure de path traditionnelle
+          path: `/${file.name}`,
           size: parseInt(file.size) || 0,
           modifiedTime: file.modifiedTime,
           checksum: file.md5Checksum,
@@ -173,9 +154,6 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Recherche des fichiers par nom ou type
-   */
   async searchFiles(query, limit = 50) {
     try {
       await this.ensureAuthenticated();
@@ -201,29 +179,24 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Télécharge un fichier
-   */
   async downloadFile(fileId, destinationDir) {
     try {
       await this.ensureAuthenticated();
 
       this.log("downloadFile", { fileId, destinationDir });
 
-      // Obtenir les métadonnées du fichier
       const fileInfoResponse = await this.makeAuthenticatedRequest(
         `${this.baseUrl}/files/${fileId}?fields=name,size,mimeType`,
       );
 
       const fileInfo = fileInfoResponse.data;
 
-      // Créer le répertoire de destination
       await fs.ensureDir(destinationDir);
 
       let downloadUrl = `${this.baseUrl}/files/${fileId}?alt=media`;
       let fileName = fileInfo.name;
 
-      // Gérer les formats Google Docs (conversion nécessaire)
+      // Handle Google Docs native formats (export required)
       if (fileInfo.mimeType.startsWith("application/vnd.google-apps.")) {
         const conversionMap = {
           "application/vnd.google-apps.document": {
@@ -254,7 +227,6 @@ class GoogleDriveConnector extends DriveConnector {
         }
       }
 
-      // Télécharger le fichier
       const response = await this.makeAuthenticatedRequest(downloadUrl, {
         responseType: "stream",
       });
@@ -279,17 +251,12 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Surveillance des changements via Google Drive API changes
-   */
   async watchForChanges(folderId, callback) {
     this.log("watchForChanges", {
       folderId,
       note: "Using polling approach - push notifications require webhook setup",
     });
 
-    // Pour une implémentation simple, on utilise le polling des changements
-    // En production, il faudrait utiliser les push notifications
     let pageToken = null;
 
     const pollChanges = async () => {
@@ -311,7 +278,6 @@ class GoogleDriveConnector extends DriveConnector {
 
         const changes = response.data.changes || [];
 
-        // Filtrer les changements pour le dossier surveillé
         const relevantChanges = changes.filter((change) => {
           const file = change.file;
           return (
@@ -337,22 +303,16 @@ class GoogleDriveConnector extends DriveConnector {
       }
     };
 
-    // Polling initial
     await pollChanges();
 
-    // Polling périodique
-    const pollInterval = setInterval(pollChanges, 60000); // Poll toutes les minutes
+    const pollInterval = setInterval(pollChanges, 60000);
 
-    // Retourner une fonction de cleanup
     return () => {
       clearInterval(pollInterval);
       this.log("watchForChanges", { status: "stopped" });
     };
   }
 
-  /**
-   * Effectue une requête authentifiée
-   */
   async makeAuthenticatedRequest(url, config = {}) {
     await this.ensureAuthenticated();
 
@@ -366,19 +326,12 @@ class GoogleDriveConnector extends DriveConnector {
     });
   }
 
-  /**
-   * S'assure que l'authentication est valide
-   */
   async ensureAuthenticated() {
     if (!this.isAuthenticated || Date.now() >= this.tokenExpiry - 30000) {
-      // Re-authentifier si pas authentifié ou token expire dans 30s
       await this.authenticate();
     }
   }
 
-  /**
-   * Validation spécifique à Google Drive
-   */
   validateConfig() {
     super.validateConfig();
 
@@ -393,9 +346,6 @@ class GoogleDriveConnector extends DriveConnector {
     return true;
   }
 
-  /**
-   * Nettoyage des ressources
-   */
   async cleanup() {
     this.accessToken = null;
     this.tokenExpiry = null;

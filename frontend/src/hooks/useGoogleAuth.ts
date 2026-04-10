@@ -22,11 +22,9 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Vérifier s'il y a des données d'authentification au chargement
   useEffect(() => {
     const checkAuthData = () => {
       try {
-        // D'abord vérifier s'il y a des credentials persistés
         const storedCredentials = TokenStorage.getCredentials();
         if (storedCredentials) {
           setUser({
@@ -35,10 +33,9 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
             photoLink: storedCredentials.photoLink,
             refreshToken: storedCredentials.refreshToken,
           });
-          return; // On a trouvé des credentials valides, pas besoin de vérifier OAuth callback
+          return;
         }
 
-        // Sinon, vérifier s'il y a des nouvelles données d'auth (callback OAuth)
         const authData = localStorage.getItem("google_auth_data");
         if (authData) {
           const parsedData = JSON.parse(authData);
@@ -50,21 +47,15 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
           };
 
           setUser(userCredentials);
-
-          // Persister les credentials pour les prochaines fois
           TokenStorage.saveCredentials(userCredentials);
-
-          // Nettoyer les données temporaires du callback
           localStorage.removeItem("google_auth_data");
         }
 
-        // Vérifier s'il y a une erreur d'authentification dans l'URL
         const urlParams = new URLSearchParams(window.location.search);
         const authError = urlParams.get("auth_error");
         if (authError) {
           setError(authError);
 
-          // Nettoyer l'URL
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.delete("auth_error");
           window.history.replaceState({}, "", newUrl.toString());
@@ -83,12 +74,11 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     TokenStorage.clearCredentials();
   }, []);
 
-  // Auto-disconnect when backend reports expired token
   useEffect(() => {
     const handleTokenExpired = () => {
       console.warn("Google token expired, disconnecting...");
       disconnect();
-      setError("Votre session Google a expiré, veuillez vous reconnecter");
+      setError("Your Google session has expired, please reconnect");
     };
 
     window.addEventListener(GOOGLE_TOKEN_EXPIRED_EVENT, handleTokenExpired);
@@ -102,7 +92,6 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     setError(null);
 
     try {
-      // Générer l'URL d'autorisation via l'API
       const authResponse = await fetch(
         `${import.meta.env.VITE_API_URL}/auth/google`,
       );
@@ -111,14 +100,13 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       if (!authData.success) {
         throw new Error(
           authData.message ||
-            "Erreur lors de la génération de l'URL d'autorisation",
+            "Error generating authorization URL",
         );
       }
 
-      // Rediriger directement vers Google (pas de popup)
       window.location.href = authData.data.authUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setError(err instanceof Error ? err.message : "Unknown error");
       setIsConnecting(false);
     }
   };

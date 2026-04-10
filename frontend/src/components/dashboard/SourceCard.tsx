@@ -25,7 +25,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import {
   Calendar,
   CheckCircle,
@@ -69,7 +68,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
     } catch (error) {
       setConnectionResult({
         success: false,
-        message: error instanceof Error ? error.message : "Erreur de test",
+        message: error instanceof Error ? error.message : "Test error",
       });
     } finally {
       setIsTestingConnection(false);
@@ -101,11 +100,11 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-green-100 text-green-800">Actif</Badge>;
+        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
       case "inactive":
-        return <Badge variant="secondary">Inactif</Badge>;
+        return <Badge variant="secondary">Inactive</Badge>;
       case "error":
-        return <Badge variant="destructive">Erreur</Badge>;
+        return <Badge variant="destructive">Error</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -129,12 +128,12 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Jamais";
+    if (!dateString) return "Never";
     try {
       const date = new Date(dateString);
-      return format(date, "PPp", { locale: fr });
+      return format(date, "PPp");
     } catch {
-      return "Date invalide";
+      return "Invalid date";
     }
   };
 
@@ -170,7 +169,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                     ) : (
                       <TestTube className="mr-2 h-4 w-4" />
                     )}
-                    Tester la connexion
+                    Test connection
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSync} disabled={isSyncing}>
                     {isSyncing ? (
@@ -178,19 +177,19 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                     ) : (
                       <RefreshCw className="mr-2 h-4 w-4" />
                     )}
-                    Synchroniser maintenant
+                    Sync now
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    Configurer
+                    Configure
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer
+                    Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -199,7 +198,6 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Résultat du test de connexion */}
           {connectionResult && (
             <div
               className={`p-3 rounded-lg border text-sm ${
@@ -216,20 +214,19 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                 )}
                 <span className="font-medium">
                   {connectionResult.success
-                    ? "Connexion OK"
-                    : "Connexion échouée"}
+                    ? "Connection OK"
+                    : "Connection failed"}
                 </span>
               </div>
               <p className="mt-1">{connectionResult.message}</p>
             </div>
           )}
 
-          {/* Informations de la source */}
           <div className="grid grid-cols-1 gap-3 text-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <FolderOpen className="h-4 w-4" />
-                <span>Chemin source:</span>
+                <span>Source path:</span>
               </div>
               <code className="bg-muted px-2 py-1 rounded text-xs">
                 {source.config.sourcePath}
@@ -251,13 +248,12 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="h-4 w-4" />
-                <span>Dernière sync réussie:</span>
+                <span>Last successful sync:</span>
               </div>
               <span className="text-xs">{formatDate(source.lastSync)}</span>
             </div>
           </div>
 
-          {/* Extensions et filtres */}
           {source.config.filters?.extensions && (() => {
             const exts = Array.isArray(source.config.filters.extensions)
               ? source.config.filters.extensions
@@ -282,11 +278,10 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
             ) : null;
           })()}
 
-          {/* Jobs récents */}
           {source.jobs && source.jobs.length > 0 && (
             <div>
               <span className="text-xs text-muted-foreground">
-                Jobs récents:
+                Recent jobs:
               </span>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-xs">
@@ -294,7 +289,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                 </Badge>
                 {source.jobs.some((job) => job.status === "failed") && (
                   <Badge variant="destructive" className="text-xs">
-                    Erreurs
+                    Errors
                   </Badge>
                 )}
               </div>
@@ -303,24 +298,23 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
         </CardContent>
       </Card>
 
-      {/* Dialog de confirmation de suppression */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer la source ?</AlertDialogTitle>
+            <AlertDialogTitle>Delete source?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. Toutes les données associées à la
-              source "{source.name}" seront supprimées, y compris l'historique
-              des conversions.
+              This action is irreversible. All data associated with the
+              source "{source.name}" will be deleted, including conversion
+              history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-red-600 hover:bg-red-700"
             >
-              Supprimer
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

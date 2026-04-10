@@ -70,10 +70,9 @@ class ConversionController {
 
       const job = await conversionService.createJob(sourceId, fileName, filePath, fileSize)
       
-      // Traiter le job immédiatement (en arrière-plan)
       conversionService.processJob(job.id)
         .then(() => {
-          console.log(`✅ Job ${job.id} completed`)
+          console.log(`Job ${job.id} completed`)
         })
         .catch((error) => {
           console.error(`❌ Job ${job.id} failed:`, error)
@@ -195,7 +194,6 @@ class ConversionController {
         })
       }
 
-      // Réinitialiser le job
       const updatedJob = await conversionService.createJob(
         job.sourceId,
         job.fileName,
@@ -203,10 +201,9 @@ class ConversionController {
         job.fileSize
       )
 
-      // Traiter le nouveau job
       conversionService.processJob(updatedJob.id)
         .then(() => {
-          console.log(`✅ Retry job ${updatedJob.id} completed`)
+          console.log(`Retry job ${updatedJob.id} completed`)
         })
         .catch((error) => {
           console.error(`❌ Retry job ${updatedJob.id} failed:`, error)

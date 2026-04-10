@@ -155,17 +155,13 @@ class MonitoringController {
   // POST /api/monitoring/restart
   async restartMonitoring(req, res) {
     try {
-      console.log('🔄 Restarting monitoring service...')
+      console.log('Restarting monitoring service...')
       
-      // Arrêter le service s'il tourne
       if (monitoringService.isRunning) {
         await monitoringService.stop()
       }
       
-      // Attendre un peu avant de redémarrer
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Redémarrer
       await monitoringService.start()
       
       res.json({

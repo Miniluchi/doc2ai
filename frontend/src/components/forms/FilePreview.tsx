@@ -61,7 +61,7 @@ export function FilePreview({
       setPreviewData(data);
     } catch (error) {
       console.error("Error fetching file preview:", error);
-      toast.error("Erreur lors du chargement de la prévisualisation");
+      toast.error("Error loading file preview");
       setPreviewData(null);
     } finally {
       setLoading(false);
@@ -100,25 +100,24 @@ export function FilePreview({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
-          Aperçu des fichiers à convertir
+          File preview
         </CardTitle>
         <CardDescription>
-          Fichiers qui seront automatiquement convertis depuis le dossier "
-          {folderName}"
+          Files that will be automatically converted from the "{folderName}"
+          folder
         </CardDescription>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span>Analyse des fichiers en cours...</span>
+            <span>Analyzing files...</span>
           </div>
         ) : previewData ? (
           <div className="space-y-4">
-            {/* Statistiques */}
             <div className="flex gap-4">
               <Badge variant="outline">
-                {previewData.totalFiles} fichier
+                {previewData.totalFiles} file
                 {previewData.totalFiles > 1 ? "s" : ""} total
               </Badge>
               <Badge
@@ -126,13 +125,11 @@ export function FilePreview({
                   previewData.convertibleFiles > 0 ? "default" : "secondary"
                 }
               >
-                {previewData.convertibleFiles} fichier
-                {previewData.convertibleFiles > 1 ? "s" : ""} convertible
+                {previewData.convertibleFiles} convertible file
                 {previewData.convertibleFiles > 1 ? "s" : ""}
               </Badge>
             </div>
 
-            {/* Liste des fichiers convertibles */}
             {previewData.convertibleFiles > 0 ? (
               <ScrollArea className="h-[200px] w-full rounded-md border">
                 <div className="p-4 space-y-2">
@@ -147,18 +144,18 @@ export function FilePreview({
                         </span>
                         <div>
                           <p className="font-medium text-sm">
-                            {file.name || "Fichier sans nom"}
+                            {file.name || "Unnamed file"}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {file.size
                               ? formatFileSize(file.size)
-                              : "Taille inconnue"}{" "}
-                            • Modifié le{" "}
+                              : "Unknown size"}{" "}
+                            • Modified{" "}
                             {file.modifiedTime
                               ? new Date(file.modifiedTime).toLocaleDateString(
-                                  "fr-FR",
+                                  "en-US",
                                 )
-                              : "Date inconnue"}
+                              : "Unknown date"}
                           </p>
                         </div>
                       </div>
@@ -178,16 +175,16 @@ export function FilePreview({
             ) : (
               <div className="text-center py-6 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Aucun fichier convertible trouvé</p>
+                <p>No convertible files found</p>
                 <p className="text-sm">
-                  Formats supportés: {extensions.join(", ")}
+                  Supported formats: {extensions.join(", ")}
                 </p>
               </div>
             )}
           </div>
         ) : (
           <div className="text-center py-6 text-muted-foreground">
-            <p>Sélectionnez un dossier pour voir l'aperçu des fichiers</p>
+            <p>Select a folder to see the file preview</p>
           </div>
         )}
       </CardContent>
