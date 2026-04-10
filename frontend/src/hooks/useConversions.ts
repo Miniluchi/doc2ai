@@ -23,7 +23,7 @@ export function useConversions(page = 1, limit = 20, status?: string) {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du chargement des conversions";
+          : "Failed to load conversions";
       setError(errorMessage);
       console.error("Error fetching conversions:", err);
     } finally {
@@ -35,13 +35,13 @@ export function useConversions(page = 1, limit = 20, status?: string) {
     async (id: string): Promise<ConversionJob> => {
       try {
         const cancelledJob = await conversionsApi.cancel(id);
-        await fetchConversions(); // Rafraîchir la liste
+        await fetchConversions();
         return cancelledJob;
       } catch (err) {
         const errorMessage =
           err instanceof ApiError
             ? err.message
-            : "Erreur lors de l'annulation du job";
+            : "Failed to cancel job";
         throw new Error(errorMessage);
       }
     },
@@ -52,13 +52,13 @@ export function useConversions(page = 1, limit = 20, status?: string) {
     async (id: string): Promise<ConversionJob> => {
       try {
         const retriedJob = await conversionsApi.retry(id);
-        await fetchConversions(); // Rafraîchir la liste
+        await fetchConversions();
         return retriedJob;
       } catch (err) {
         const errorMessage =
           err instanceof ApiError
             ? err.message
-            : "Erreur lors de la relance du job";
+            : "Failed to retry job";
         throw new Error(errorMessage);
       }
     },
@@ -95,7 +95,7 @@ export function useConversionStats() {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du chargement des statistiques";
+          : "Failed to load statistics";
       setError(errorMessage);
       console.error("Error fetching conversion stats:", err);
     } finally {
@@ -142,7 +142,7 @@ export function useJobProgress(jobId: string | null, pollingInterval = 2000) {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du chargement de la progression";
+          : "Failed to load progress";
       setError(errorMessage);
       console.error("Error fetching job progress:", err);
     } finally {
@@ -156,10 +156,8 @@ export function useJobProgress(jobId: string | null, pollingInterval = 2000) {
       return;
     }
 
-    // Fetch initial progress
     fetchProgress();
 
-    // Set up polling if job is in progress
     const interval = setInterval(() => {
       if (progress?.status === "processing" || progress?.status === "pending") {
         fetchProgress();

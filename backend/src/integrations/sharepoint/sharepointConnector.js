@@ -3,10 +3,6 @@ import axios from 'axios'
 import fs from 'fs-extra'
 import path from 'path'
 
-/**
- * Connecteur pour Microsoft SharePoint et OneDrive
- * Utilise Microsoft Graph API
- */
 class SharePointConnector extends DriveConnector {
   constructor(config) {
     super(config)
@@ -17,18 +13,14 @@ class SharePointConnector extends DriveConnector {
     this.siteId = null
   }
 
-  /**
-   * Authentifie avec Microsoft Graph API
-   */
   async authenticate() {
     try {
       this.validateConfig()
 
       const { clientId, clientSecret, tenantId } = this.config.credentials
-      
-      // Obtenir un token d'accès via Client Credentials Flow
+
       const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
-      
+
       const params = new URLSearchParams()
       params.append('client_id', clientId)
       params.append('client_secret', clientSecret)
@@ -47,7 +39,6 @@ class SharePointConnector extends DriveConnector {
       this.tokenExpiry = Date.now() + (response.data.expires_in * 1000)
       this.isAuthenticated = true
 
-      // Obtenir l'ID du site SharePoint si nécessaire
       if (!this.isOneDrive && this.config.siteUrl) {
         await this.getSiteId()
       }
@@ -60,9 +51,6 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Obtient l'ID du site SharePoint
-   */
   async getSiteId() {
     try {
       const siteUrl = new URL(this.config.siteUrl)
@@ -81,16 +69,12 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Test de connexion
-   */
   async testConnection() {
     try {
       await this.authenticate()
 
-      // Tester l'accès aux fichiers
-      const files = await this.listFiles('/', 1) // Lister seulement 1 fichier pour tester
-      
+      const files = await this.listFiles('/', 1)
+
       return {
         success: true,
         message: 'Connection successful',
@@ -112,30 +96,24 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Liste les fichiers
-   */
   async listFiles(folderPath = '/', limit = null) {
     try {
       await this.ensureAuthenticated()
 
       let endpoint
       if (this.isOneDrive) {
-        // OneDrive personnel
-        endpoint = folderPath === '/' 
+        endpoint = folderPath === '/'
           ? `${this.baseUrl}/me/drive/root/children`
           : `${this.baseUrl}/me/drive/root:${folderPath}:/children`
       } else {
-        // SharePoint
         endpoint = folderPath === '/'
           ? `${this.baseUrl}/sites/${this.siteId}/drive/root/children`
           : `${this.baseUrl}/sites/${this.siteId}/drive/root:${folderPath}:/children`
       }
 
-      // Ajouter des paramètres pour optimiser la requête
       const params = {
         '$select': 'id,name,size,lastModifiedDateTime,file,webUrl,@microsoft.graph.downloadUrl',
-        '$filter': 'file ne null' // Seulement les fichiers, pas les dossiers
+        '$filter': 'file ne null'
       }
 
       if (limit) {
@@ -162,14 +140,10 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Télécharge un fichier
-   */
   async downloadFile(fileId, destinationDir) {
     try {
       await this.ensureAuthenticated()
 
-      // Obtenir l'URL de téléchargement
       let endpoint
       if (this.isOneDrive) {
         endpoint = `${this.baseUrl}/me/drive/items/${fileId}`
@@ -187,10 +161,8 @@ class SharePointConnector extends DriveConnector {
         throw new Error('No download URL available for this file')
       }
 
-      // Créer le répertoire de destination
       await fs.ensureDir(destinationDir)
 
-      // Télécharger le fichier
       const response = await axios.get(downloadUrl, {
         responseType: 'stream'
       })
@@ -214,25 +186,19 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  /**
-   * Surveillance des changements (polling basique)
-   */
   async watchForChanges(folderPath, callback) {
-    this.log('watchForChanges', { 
-      folderPath, 
-      note: 'Using polling approach - webhooks require additional setup' 
+    this.log('watchForChanges', {
+      folderPath,
+      note: 'Using polling approach - webhooks require additional setup'
     })
 
-    // Pour une implémentation simple, on utilise le polling
-    // En production, il faudrait utiliser les webhooks Microsoft Graph
     let lastCheck = new Date()
 
     const pollInterval = setInterval(async () => {
       try {
         const files = await this.listFiles(folderPath)
-        
-        // Filtrer les fichiers modifiés depuis la dernière vérification
-        const changedFiles = files.filter(file => 
+
+        const changedFiles = files.filter(file =>
           new Date(file.modifiedTime) > lastCheck
         )
 
@@ -246,18 +212,14 @@ class SharePointConnector extends DriveConnector {
       } catch (error) {
         console.error('Error in watchForChanges polling:', error)
       }
-    }, 60000) // Poll toutes les minutes
+    }, 60000)
 
-    // Retourner une fonction de cleanup
     return () => {
       clearInterval(pollInterval)
       this.log('watchForChanges', { status: 'stopped' })
     }
   }
 
-  /**
-   * Effectue une requête authentifiée
-   */
   async makeAuthenticatedRequest(url, config = {}) {
     await this.ensureAuthenticated()
 
@@ -271,19 +233,12 @@ class SharePointConnector extends DriveConnector {
     })
   }
 
-  /**
-   * S'assure que l'authentication est valide
-   */
   async ensureAuthenticated() {
     if (!this.isAuthenticated || Date.now() >= this.tokenExpiry - 30000) {
-      // Re-authentifier si pas authentifié ou token expire dans 30s
       await this.authenticate()
     }
   }
 
-  /**
-   * Validation spécifique à SharePoint
-   */
   validateConfig() {
     super.validateConfig()
 
@@ -300,9 +255,6 @@ class SharePointConnector extends DriveConnector {
     return true
   }
 
-  /**
-   * Nettoyage des ressources
-   */
   async cleanup() {
     this.accessToken = null
     this.tokenExpiry = null

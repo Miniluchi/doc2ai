@@ -10,7 +10,6 @@ import Dashboard from "./pages/Dashboard";
 function App() {
   const { status: monitoringStatus } = useMonitoring();
 
-  // Détecter si on est sur la page de callback OAuth
   const isAuthCallback =
     window.location.pathname === "/auth/callback" ||
     window.location.search.includes("success=true") ||
@@ -18,7 +17,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <header className="border-b">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -33,23 +31,20 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-6 py-8 flex-1">
         {isAuthCallback ? <AuthCallback /> : <Dashboard />}
       </main>
 
-      {/* Footer */}
       <footer className="border-t">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <p>
-              Doc2AI - Convertisseur automatique de documentation pour
-              développeurs
+              Doc2AI - Automatic documentation converter for developers
             </p>
             {monitoringStatus?.isRunning && (
               <div className="flex items-center gap-1">
                 <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-xs">En ligne</span>
+                <span className="text-xs">Online</span>
               </div>
             )}
           </div>

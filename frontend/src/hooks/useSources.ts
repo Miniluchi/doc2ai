@@ -14,7 +14,7 @@ export function useSources() {
       const data = await sourcesApi.getAll()
       setSources(data)
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors du chargement des sources'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load sources'
       setError(errorMessage)
       console.error('Error fetching sources:', err)
     } finally {
@@ -28,7 +28,7 @@ export function useSources() {
       setSources(prev => [...prev, newSource])
       return newSource
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors de la création de la source'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to create source'
       throw new Error(errorMessage)
     }
   }, [])
@@ -39,7 +39,7 @@ export function useSources() {
       setSources(prev => prev.map(source => source.id === id ? updatedSource : source))
       return updatedSource
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors de la mise à jour de la source'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to update source'
       throw new Error(errorMessage)
     }
   }, [])
@@ -49,7 +49,7 @@ export function useSources() {
       await sourcesApi.delete(id)
       setSources(prev => prev.filter(source => source.id !== id))
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors de la suppression de la source'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to delete source'
       throw new Error(errorMessage)
     }
   }, [])
@@ -57,11 +57,10 @@ export function useSources() {
   const testConnection = useCallback(async (id: string) => {
     try {
       const result = await sourcesApi.testConnection(id)
-      // Optionnel: rafraîchir les sources après le test
       await fetchSources()
       return result
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors du test de connexion'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to test connection'
       throw new Error(errorMessage)
     }
   }, [fetchSources])
@@ -69,10 +68,9 @@ export function useSources() {
   const syncSource = useCallback(async (id: string): Promise<void> => {
     try {
       await sourcesApi.sync(id)
-      // Rafraîchir les sources après la sync
       await fetchSources()
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors de la synchronisation'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to sync'
       throw new Error(errorMessage)
     }
   }, [fetchSources])
@@ -106,7 +104,7 @@ export function useSourceStats() {
       const data = await sourcesApi.getStats()
       setStats(data)
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors du chargement des statistiques'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load statistics'
       setError(errorMessage)
       console.error('Error fetching source stats:', err)
     } finally {
@@ -143,7 +141,7 @@ export function useSource(id: string | null) {
       const data = await sourcesApi.getById(id)
       setSource(data)
     } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Erreur lors du chargement de la source'
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load source'
       setError(errorMessage)
       console.error('Error fetching source:', err)
     } finally {

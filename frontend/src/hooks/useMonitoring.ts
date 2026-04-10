@@ -17,7 +17,7 @@ export function useMonitoring() {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du chargement du statut";
+          : "Failed to load status";
       setError(errorMessage);
       console.error("Error fetching monitoring status:", err);
     } finally {
@@ -28,12 +28,12 @@ export function useMonitoring() {
   const startMonitoring = useCallback(async (): Promise<void> => {
     try {
       await monitoringApi.start();
-      await fetchStatus(); // Rafraîchir le statut
+      await fetchStatus();
     } catch (err) {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du démarrage du monitoring";
+          : "Failed to start monitoring";
       throw new Error(errorMessage);
     }
   }, [fetchStatus]);
@@ -41,12 +41,12 @@ export function useMonitoring() {
   const stopMonitoring = useCallback(async (): Promise<void> => {
     try {
       await monitoringApi.stop();
-      await fetchStatus(); // Rafraîchir le statut
+      await fetchStatus();
     } catch (err) {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors de l'arrêt du monitoring";
+          : "Failed to stop monitoring";
       throw new Error(errorMessage);
     }
   }, [fetchStatus]);
@@ -54,12 +54,12 @@ export function useMonitoring() {
   const restartMonitoring = useCallback(async (): Promise<void> => {
     try {
       await monitoringApi.restart();
-      await fetchStatus(); // Rafraîchir le statut
+      await fetchStatus();
     } catch (err) {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du redémarrage du monitoring";
+          : "Failed to restart monitoring";
       throw new Error(errorMessage);
     }
   }, [fetchStatus]);
@@ -94,7 +94,7 @@ export function useLogs(sourceId?: string, limit = 50) {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors du chargement des logs";
+          : "Failed to load logs";
       setError(errorMessage);
       console.error("Error fetching logs:", err);
     } finally {
@@ -129,7 +129,7 @@ export function useHealthCheck() {
       const errorMessage =
         err instanceof ApiError
           ? err.message
-          : "Erreur lors de la vérification de santé";
+          : "Failed to check health";
       setError(errorMessage);
       console.error("Error fetching health status:", err);
     } finally {
@@ -140,7 +140,6 @@ export function useHealthCheck() {
   useEffect(() => {
     fetchHealth();
 
-    // Rafraîchir le health check toutes les 30 secondes
     const interval = setInterval(fetchHealth, 30000);
 
     return () => clearInterval(interval);
