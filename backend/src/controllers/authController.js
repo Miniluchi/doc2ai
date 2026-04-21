@@ -1,4 +1,5 @@
 import axios from "axios";
+import config from "../config/env.js";
 
 class AuthController {
   // GET /api/auth/google/callback
@@ -29,9 +30,7 @@ class AuthController {
           client_secret: process.env.GOOGLE_CLIENT_SECRET,
           code: code,
           grant_type: "authorization_code",
-          redirect_uri:
-            process.env.GOOGLE_REDIRECT_URI ||
-            "http://localhost:3000/api/auth/google/callback",
+          redirect_uri: config.google.redirectUri,
         },
         {
           headers: {
@@ -84,7 +83,7 @@ class AuthController {
         const encodedData = Buffer.from(JSON.stringify(successData)).toString(
           "base64",
         );
-        const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
+        const frontendUrl = config.corsOrigin;
 
         return res.redirect(
           `${frontendUrl}/auth/callback?data=${encodedData}&success=true`,
@@ -107,7 +106,7 @@ class AuthController {
         const encodedFallbackData = Buffer.from(
           JSON.stringify(fallbackData),
         ).toString("base64");
-        const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
+        const frontendUrl = config.corsOrigin;
 
         return res.redirect(
           `${frontendUrl}/auth/callback?data=${encodedFallbackData}&success=true`,
@@ -141,9 +140,7 @@ class AuthController {
       const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
       const params = new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID,
-        redirect_uri:
-          process.env.GOOGLE_REDIRECT_URI ||
-          "http://localhost:3000/api/auth/google/callback",
+        redirect_uri: config.google.redirectUri,
         response_type: "code",
         scope: "https://www.googleapis.com/auth/drive",
         access_type: "offline",
