@@ -1,53 +1,79 @@
 # Doc2AI
 
-is a web application that automates document conversion from cloud drives (Google Drive, SharePoint) to Markdown format, with continuous change monitoring.
+Automatically convert documents from Google Drive and SharePoint to Markdown, with continuous change monitoring.
 
-## Overview
+## Prerequisites
 
-Doc2AI allows you to connect your cloud drives and automatically convert your documents (DOCX, DOC, PDF) to Markdown. The application continuously monitors your connected sources and automatically processes new files or modifications.
+- [Docker](https://www.docker.com/products/docker-desktop/) installed and running
 
-### Key Features
+## Getting started
 
-- **OAuth integration** with Google Drive and Microsoft SharePoint
-- **Automatic conversion** of documents to Markdown (DOCX/DOC/PDF → Markdown)
-- **Continuous monitoring** of changes in connected drives
-- **French user interface** with conversion task management
-- **Configured export** to specific local folders
+### 1. Configure environment variables
 
-### Technical Architecture
+```bash
+cp .env.example .env
+```
 
-**Backend**
+Open `.env` and fill in your credentials:
 
-- Node.js/Express with layered architecture
-- SQLite database with Prisma ORM
-- Redis for asynchronous task management
-- Factory pattern system for connectors and converters
+- **Google Drive** &mdash; `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (create them in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials))
+- **SharePoint / OneDrive** &mdash; `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, and `MICROSOFT_TENANT_ID` (register an app in the [Azure portal](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade))
+- **Security** &mdash; generate random values for `JWT_SECRET` and `ENCRYPTION_KEY`:
+  ```bash
+  openssl rand -base64 32
+  ```
 
-**Frontend**
+### 2. Start the application
 
-- React SPA with TypeScript and Vite
-- Modern interface with shadcn/ui
-- Custom hooks for state management
+```bash
+./start.sh
+```
 
-**Infrastructure**
+This single command builds and starts all services (backend, frontend, Redis). It takes about 30 seconds on the first run.
 
-- Fully containerized application with Docker
-- Automatic database migration
-- Persistent volumes for storage
+### 3. Open the app
 
-### Data Flow
+Go to **http://localhost:5173** in your browser.
 
-1. OAuth authentication with cloud providers
-2. Drive source configuration in the interface
-3. Monitoring service that detects changes
-4. Asynchronous document conversion pipeline
-5. Local storage of converted Markdown files
+From there you can:
 
-### Security
+1. Connect a cloud drive (Google Drive or SharePoint) via OAuth
+2. Choose which folders to monitor and where to export the Markdown files
+3. Let the monitoring service automatically detect changes and convert new documents
 
-- Encryption of OAuth credentials in database
-- JWT authentication for the API
-- Rate limiting and CORS configuration
-- Network isolation via Docker
+## Useful commands
 
-The application is designed for a containerized development workflow with an automated startup script (`./start.sh`) that handles complete environment rebuild and restart.
+| Command | Description |
+|---|---|
+| `./start.sh` | Full rebuild and start |
+| `docker compose up -d` | Start without rebuilding |
+| `docker compose down` | Stop all services |
+| `docker compose logs -f` | Follow live logs |
+| `docker compose logs -f backend` | Follow backend logs only |
+
+## Supported formats
+
+| Source format | Output |
+|---|---|
+| DOCX / DOC | Markdown |
+| PDF | Markdown |
+| Google Docs | Markdown (exported then converted) |
+
+## Project structure
+
+```
+backend/          Node.js / Express API with Prisma ORM
+frontend/         React SPA (TypeScript, Vite, shadcn/ui)
+docker-compose.yml
+start.sh          One-command startup script
+.env.example      Template for environment variables
+```
+
+## API overview
+
+The backend exposes a REST API at `http://localhost:3000/api`:
+
+- **`/api/sources`** &mdash; manage connected cloud drives
+- **`/api/conversions`** &mdash; trigger and track document conversions
+- **`/api/monitoring`** &mdash; start/stop the automatic change watcher
+- **`/api/auth`** &mdash; OAuth callbacks for Google and Microsoft
