@@ -5,7 +5,19 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'conductor-workspace-title',
+      transformIndexHtml(html) {
+        return html.replace(
+          /%TITLE%/g,
+          process.env.CONDUCTOR_WORKSPACE_NAME || 'Doc2AI'
+        )
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
