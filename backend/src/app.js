@@ -103,10 +103,11 @@ async function startServer() {
     await initializeDatabase();
     await setupApp();
 
+    const externalPort = process.env.EXTERNAL_PORT || config.port;
     const server = app.listen(config.port, () => {
-      console.log(`Doc2AI Backend running on port ${config.port}`);
+      console.log(`Doc2AI Backend running on port ${externalPort}`);
       console.log(`Environment: ${config.nodeEnv}`);
-      console.log(`API available at: http://localhost:${config.port}/api`);
+      console.log(`API available at: http://localhost:${externalPort}/api`);
     });
 
     console.log("Starting queue processor...");
