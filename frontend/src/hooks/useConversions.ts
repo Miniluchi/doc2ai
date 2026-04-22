@@ -1,15 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import { conversionsApi, ApiError } from "../services/api";
-import type {
-  ConversionJob,
-  ConversionStats,
-  PaginatedResponse,
-} from "../types/api";
+import { useState, useEffect, useCallback } from 'react';
+import { conversionsApi, ApiError } from '../services/api';
+import type { ConversionJob, ConversionStats, PaginatedResponse } from '../types/api';
 
 export function useConversions(page = 1, limit = 20, status?: string) {
-  const [data, setData] = useState<PaginatedResponse<ConversionJob> | null>(
-    null,
-  );
+  const [data, setData] = useState<PaginatedResponse<ConversionJob> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,12 +14,9 @@ export function useConversions(page = 1, limit = 20, status?: string) {
       const response = await conversionsApi.getAll(page, limit, status);
       setData(response);
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load conversions";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load conversions';
       setError(errorMessage);
-      console.error("Error fetching conversions:", err);
+      console.error('Error fetching conversions:', err);
     } finally {
       setLoading(false);
     }
@@ -38,10 +29,7 @@ export function useConversions(page = 1, limit = 20, status?: string) {
         await fetchConversions();
         return cancelledJob;
       } catch (err) {
-        const errorMessage =
-          err instanceof ApiError
-            ? err.message
-            : "Failed to cancel job";
+        const errorMessage = err instanceof ApiError ? err.message : 'Failed to cancel job';
         throw new Error(errorMessage);
       }
     },
@@ -55,10 +43,7 @@ export function useConversions(page = 1, limit = 20, status?: string) {
         await fetchConversions();
         return retriedJob;
       } catch (err) {
-        const errorMessage =
-          err instanceof ApiError
-            ? err.message
-            : "Failed to retry job";
+        const errorMessage = err instanceof ApiError ? err.message : 'Failed to retry job';
         throw new Error(errorMessage);
       }
     },
@@ -92,12 +77,9 @@ export function useConversionStats() {
       const data = await conversionsApi.getStats();
       setStats(data);
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load statistics";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load statistics';
       setError(errorMessage);
-      console.error("Error fetching conversion stats:", err);
+      console.error('Error fetching conversion stats:', err);
     } finally {
       setLoading(false);
     }
@@ -139,12 +121,9 @@ export function useJobProgress(jobId: string | null, pollingInterval = 2000) {
       const data = await conversionsApi.getProgress(jobId);
       setProgress(data);
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load progress";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load progress';
       setError(errorMessage);
-      console.error("Error fetching job progress:", err);
+      console.error('Error fetching job progress:', err);
     } finally {
       setLoading(false);
     }
@@ -159,7 +138,7 @@ export function useJobProgress(jobId: string | null, pollingInterval = 2000) {
     fetchProgress();
 
     const interval = setInterval(() => {
-      if (progress?.status === "processing" || progress?.status === "pending") {
+      if (progress?.status === 'processing' || progress?.status === 'pending') {
         fetchProgress();
       }
     }, pollingInterval);

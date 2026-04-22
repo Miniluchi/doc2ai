@@ -1,10 +1,10 @@
-import getPrismaClient from "../config/database.js";
-import { DriveConnectorFactory } from "../integrations/base/driveConnectorFactory.js";
-import ConversionService from "./conversionService.js";
-import queueService from "./queueService.js";
-import { decryptCredentials } from "../utils/encryption.js";
-import cron from "node-cron";
-import config from "../config/env.js";
+import getPrismaClient from '../config/database.js';
+import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
+import ConversionService from './conversionService.js';
+import queueService from './queueService.js';
+import { decryptCredentials } from '../utils/encryption.js';
+import cron from 'node-cron';
+import config from '../config/env.js';
 
 const prisma = getPrismaClient();
 
@@ -19,15 +19,11 @@ class MonitoringService {
 
   _parseAndDecryptConfig(source) {
     const parsedConfig =
-      typeof source.config === "string"
-        ? JSON.parse(source.config)
-        : source.config;
+      typeof source.config === 'string' ? JSON.parse(source.config) : source.config;
 
     const decryptedConfig = {
       ...parsedConfig,
-      credentials: parsedConfig.credentials
-        ? decryptCredentials(parsedConfig.credentials)
-        : null,
+      credentials: parsedConfig.credentials ? decryptCredentials(parsedConfig.credentials) : null,
     };
 
     return { parsedConfig, decryptedConfig };
@@ -39,14 +35,14 @@ class MonitoringService {
   async start() {
     try {
       if (this.isRunning) {
-        console.warn("⚠️ Monitoring service is already running");
+        console.warn('⚠️ Monitoring service is already running');
         return;
       }
 
-      console.log("Starting monitoring service...");
+      console.log('Starting monitoring service...');
 
       const activeSources = await prisma.source.findMany({
-        where: { status: "active" },
+        where: { status: 'active' },
       });
 
       for (const source of activeSources) {
@@ -58,14 +54,14 @@ class MonitoringService {
       this.isRunning = true;
       console.log(`Monitoring service started for ${activeSources.length} sources`);
     } catch (error) {
-      console.error("❌ Failed to start monitoring service:", error);
+      console.error('❌ Failed to start monitoring service:', error);
       throw error;
     }
   }
 
   async stop() {
     try {
-      console.log("Stopping monitoring service...");
+      console.log('Stopping monitoring service...');
 
       for (const [sourceId] of this.activeMonitors) {
         await this.stopSourceMonitoring(sourceId);
@@ -77,9 +73,9 @@ class MonitoringService {
       }
 
       this.isRunning = false;
-      console.log("Monitoring service stopped");
+      console.log('Monitoring service stopped');
     } catch (error) {
-      console.error("❌ Failed to stop monitoring service:", error);
+      console.error('❌ Failed to stop monitoring service:', error);
       throw error;
     }
   }
@@ -90,12 +86,12 @@ class MonitoringService {
     this.cronJob = cron.schedule(
       cronExpression,
       async () => {
-        console.log("Running scheduled sync...");
+        console.log('Running scheduled sync...');
         await this.syncAllActiveSources();
       },
       {
         scheduled: true,
-        timezone: "Europe/Paris",
+        timezone: 'Europe/Paris',
       },
     );
 
@@ -112,10 +108,7 @@ class MonitoringService {
 
       const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
-      const connector = DriveConnectorFactory.createConnector(
-        source.platform,
-        decryptedConfig,
-      );
+      const connector = DriveConnectorFactory.createConnector(source.platform, decryptedConfig);
 
       const connectionTest = await connector.testConnection();
       if (!connectionTest.success) {
@@ -131,9 +124,9 @@ class MonitoringService {
       await prisma.syncLog.create({
         data: {
           sourceId: source.id,
-          action: "monitor_start",
-          status: "success",
-          message: "Monitoring started successfully",
+          action: 'monitor_start',
+          status: 'success',
+          message: 'Monitoring started successfully',
         },
       });
     } catch (error) {
@@ -142,8 +135,8 @@ class MonitoringService {
       await prisma.syncLog.create({
         data: {
           sourceId: source.id,
-          action: "monitor_start",
-          status: "error",
+          action: 'monitor_start',
+          status: 'error',
           message: error.message,
           details: JSON.stringify({ error: error.stack }),
         },
@@ -160,10 +153,7 @@ class MonitoringService {
 
       console.log(`Stopping monitoring for: ${monitor.source.name}`);
 
-      if (
-        monitor.connector &&
-        typeof monitor.connector.cleanup === "function"
-      ) {
+      if (monitor.connector && typeof monitor.connector.cleanup === 'function') {
         await monitor.connector.cleanup();
       }
 
@@ -172,16 +162,13 @@ class MonitoringService {
       await prisma.syncLog.create({
         data: {
           sourceId,
-          action: "monitor_stop",
-          status: "success",
-          message: "Monitoring stopped",
+          action: 'monitor_stop',
+          status: 'success',
+          message: 'Monitoring stopped',
         },
       });
     } catch (error) {
-      console.error(
-        `❌ Error stopping monitoring for source ${sourceId}:`,
-        error,
-      );
+      console.error(`❌ Error stopping monitoring for source ${sourceId}:`, error);
     }
   }
 
@@ -219,11 +206,11 @@ class MonitoringService {
       });
 
       if (!source) {
-        throw new Error("Source not found");
+        throw new Error('Source not found');
       }
 
-      if (source.status !== "active") {
-        throw new Error("Source must be active to sync");
+      if (source.status !== 'active') {
+        throw new Error('Source must be active to sync');
       }
 
       let connector;
@@ -236,10 +223,7 @@ class MonitoringService {
 
         const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
-        connector = DriveConnectorFactory.createConnector(
-          source.platform,
-          decryptedConfig,
-        );
+        connector = DriveConnectorFactory.createConnector(source.platform, decryptedConfig);
         await connector.authenticate();
       }
 
@@ -247,29 +231,29 @@ class MonitoringService {
 
       const { parsedConfig } = this._parseAndDecryptConfig(source);
 
-      const sourcePath = parsedConfig.sourcePath || "/";
+      const sourcePath = parsedConfig.sourcePath || '/';
       const files = await connector.listFiles(sourcePath);
 
       // Normalize filters (may be objects {"0":".docx",...} instead of arrays)
       const rawExtensions = parsedConfig.filters?.extensions;
       const supportedExtensions = Array.isArray(rawExtensions)
         ? rawExtensions
-        : rawExtensions && typeof rawExtensions === "object"
+        : rawExtensions && typeof rawExtensions === 'object'
           ? Object.values(rawExtensions)
-          : [".docx", ".pdf", ".doc"];
+          : ['.docx', '.pdf', '.doc'];
 
       const rawExclude = parsedConfig.filters?.excludePatterns;
       const excludePatterns = Array.isArray(rawExclude)
         ? rawExclude
-        : rawExclude && typeof rawExclude === "object"
+        : rawExclude && typeof rawExclude === 'object'
           ? Object.values(rawExclude)
           : [];
 
       // Map Google Apps mimeTypes to their equivalent extensions
       const googleMimeToExt = {
-        "application/vnd.google-apps.document": ".docx",
-        "application/vnd.google-apps.spreadsheet": ".xlsx",
-        "application/vnd.google-apps.presentation": ".pptx",
+        'application/vnd.google-apps.document': '.docx',
+        'application/vnd.google-apps.spreadsheet': '.xlsx',
+        'application/vnd.google-apps.presentation': '.pptx',
       };
 
       const filteredFiles = files.filter((file) => {
@@ -280,15 +264,13 @@ class MonitoringService {
 
         // Or by Google Apps mimeType (these files have no extension in their name)
         const googleExt = googleMimeToExt[file.mimeType];
-        const matchesGoogleType = googleExt &&
-          supportedExtensions.some((ext) => ext.toLowerCase() === googleExt);
+        const matchesGoogleType =
+          googleExt && supportedExtensions.some((ext) => ext.toLowerCase() === googleExt);
 
         if (!hasValidExtension && !matchesGoogleType) return false;
 
         // Check exclusion patterns
-        const isExcluded = excludePatterns.some((pattern) =>
-          file.name.match(new RegExp(pattern)),
-        );
+        const isExcluded = excludePatterns.some((pattern) => file.name.match(new RegExp(pattern)));
 
         return !isExcluded;
       });
@@ -311,8 +293,8 @@ class MonitoringService {
       await prisma.syncLog.create({
         data: {
           sourceId,
-          action: "sync",
-          status: "success",
+          action: 'sync',
+          status: 'success',
           message: `Processed ${filteredFiles.length} files`,
           details: JSON.stringify({ fileCount: filteredFiles.length }),
         },
@@ -324,14 +306,14 @@ class MonitoringService {
         await prisma.syncLog.create({
           data: {
             sourceId,
-            action: "sync",
-            status: "error",
+            action: 'sync',
+            status: 'error',
             message: error.message,
             details: JSON.stringify({ error: error.stack }),
           },
         });
       } catch (dbError) {
-        console.error("Failed to log sync error:", dbError);
+        console.error('Failed to log sync error:', dbError);
       }
 
       throw error;
@@ -345,7 +327,7 @@ class MonitoringService {
       const existingFile = await prisma.convertedFile.findFirst({
         where: {
           originalPath: file.path,
-          platform: file.platform || "unknown",
+          platform: file.platform || 'unknown',
         },
       });
 
@@ -357,12 +339,7 @@ class MonitoringService {
 
       const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
-      const job = await this.conversionService.createJob(
-        sourceId,
-        file.name,
-        tempPath,
-        file.size,
-      );
+      const job = await this.conversionService.createJob(sourceId, file.name, tempPath, file.size);
 
       await queueService.enqueueConversion(job.id, file.name);
 
@@ -373,8 +350,8 @@ class MonitoringService {
       await prisma.syncLog.create({
         data: {
           sourceId,
-          action: "file_process",
-          status: "error",
+          action: 'file_process',
+          status: 'error',
           message: `Failed to process ${file.name}: ${error.message}`,
           details: JSON.stringify({
             fileName: file.name,
@@ -389,12 +366,12 @@ class MonitoringService {
     try {
       const activeSourceCount = this.activeMonitors.size;
       const totalSources = await prisma.source.count({
-        where: { status: "active" },
+        where: { status: 'active' },
       });
 
       const recentLogs = await prisma.syncLog.findMany({
         take: 10,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         include: {
           source: {
             select: { name: true },
@@ -413,7 +390,7 @@ class MonitoringService {
         recentLogs,
       };
     } catch (error) {
-      console.error("Error getting monitoring status:", error);
+      console.error('Error getting monitoring status:', error);
       throw error;
     }
   }
@@ -425,7 +402,7 @@ class MonitoringService {
       const logs = await prisma.syncLog.findMany({
         where,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         include: {
           source: {
             select: { name: true, platform: true },
@@ -435,7 +412,7 @@ class MonitoringService {
 
       return logs;
     } catch (error) {
-      console.error("Error fetching logs:", error);
+      console.error('Error fetching logs:', error);
       throw error;
     }
   }

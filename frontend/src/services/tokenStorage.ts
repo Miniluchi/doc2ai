@@ -6,7 +6,7 @@ interface GoogleCredentials {
   expiresAt?: number;
 }
 
-const STORAGE_KEY = "doc2ai_google_credentials";
+const STORAGE_KEY = 'doc2ai_google_credentials';
 const TOKEN_EXPIRY_HOURS = 24;
 
 export class TokenStorage {
@@ -14,12 +14,12 @@ export class TokenStorage {
     try {
       const dataToStore = {
         ...credentials,
-        expiresAt: Date.now() + (TOKEN_EXPIRY_HOURS * 60 * 60 * 1000)
+        expiresAt: Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000,
       };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore));
     } catch (error) {
-      console.error("Failed to save credentials:", error);
+      console.error('Failed to save credentials:', error);
     }
   }
 
@@ -38,7 +38,7 @@ export class TokenStorage {
 
       return credentials;
     } catch (error) {
-      console.error("Failed to get credentials:", error);
+      console.error('Failed to get credentials:', error);
       this.clearCredentials();
       return null;
     }
@@ -48,7 +48,7 @@ export class TokenStorage {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (error) {
-      console.error("Failed to clear credentials:", error);
+      console.error('Failed to clear credentials:', error);
     }
   }
 

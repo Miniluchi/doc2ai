@@ -1,26 +1,22 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Loader2, LogOut } from "lucide-react";
-import React from "react";
-import { useGoogleAuth } from "../../hooks/useGoogleAuth";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Loader2, LogOut } from 'lucide-react';
+import React from 'react';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 interface GoogleAuthButtonProps {
   onAuthSuccess?: (refreshToken: string, userEmail: string) => void;
   onAuthError?: (error: string) => void;
 }
 
-export function GoogleAuthButton({
-  onAuthSuccess,
-  onAuthError,
-}: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ onAuthSuccess, onAuthError }: GoogleAuthButtonProps) {
   const { isConnecting, user, connect, disconnect, error } = useGoogleAuth();
 
   const handleConnect = async () => {
     try {
       await connect();
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Connection error";
+      const errorMessage = err instanceof Error ? err.message : 'Connection error';
       onAuthError?.(errorMessage);
     }
   };
@@ -49,9 +45,9 @@ export function GoogleAuthButton({
             <AvatarImage src={user.photoLink || undefined} alt={user.name} />
             <AvatarFallback className="bg-green-100 text-green-700">
               {user.name
-                .split(" ")
+                .split(' ')
                 .map((n) => n[0])
-                .join("")
+                .join('')
                 .slice(0, 2)}
             </AvatarFallback>
           </Avatar>

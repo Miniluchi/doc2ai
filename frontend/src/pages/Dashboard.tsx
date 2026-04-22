@@ -1,27 +1,15 @@
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Activity,
-  AlertCircle,
-  Cloud,
-  Download,
-  Plus,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { SourceCard } from "../components/dashboard/SourceCard";
-import { AddSourceDialog } from "../components/forms/AddSourceDialog";
-import { useConversionStats } from "../hooks/useConversions";
-import { useMonitoring } from "../hooks/useMonitoring";
-import { useSources, useSourceStats } from "../hooks/useSources";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Activity, AlertCircle, Cloud, Download, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { SourceCard } from '../components/dashboard/SourceCard';
+import { AddSourceDialog } from '../components/forms/AddSourceDialog';
+import { useConversionStats } from '../hooks/useConversions';
+import { useMonitoring } from '../hooks/useMonitoring';
+import { useSources, useSourceStats } from '../hooks/useSources';
 
 export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -59,9 +47,7 @@ export default function Dashboard() {
       {sourcesError && (
         <Alert className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Error loading data: {sourcesError}
-          </AlertDescription>
+          <AlertDescription>Error loading data: {sourcesError}</AlertDescription>
         </Alert>
       )}
 
@@ -82,9 +68,7 @@ export default function Dashboard() {
                 {sourceStats?.totalSources || sources.length}
               </div>
             )}
-            <p className="text-sm text-muted-foreground">
-              Configured document sources
-            </p>
+            <p className="text-sm text-muted-foreground">Configured document sources</p>
             {sourceStats && sourceStats.activeSources > 0 && (
               <Badge variant="outline" className="mt-2">
                 {sourceStats.activeSources} active
@@ -101,12 +85,8 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {conversionStats?.recent ?? 0}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Last 24 hours
-            </p>
+            <div className="text-3xl font-bold">{conversionStats?.recent ?? 0}</div>
+            <p className="text-sm text-muted-foreground">Last 24 hours</p>
           </CardContent>
         </Card>
 
@@ -120,17 +100,13 @@ export default function Dashboard() {
           <CardContent>
             {monitoringStatus ? (
               <>
-                <Badge
-                  variant={
-                    monitoringStatus.isRunning ? "default" : "secondary"
-                  }
-                >
-                  {monitoringStatus.isRunning ? "Active" : "Inactive"}
+                <Badge variant={monitoringStatus.isRunning ? 'default' : 'secondary'}>
+                  {monitoringStatus.isRunning ? 'Active' : 'Inactive'}
                 </Badge>
                 <p className="text-sm text-muted-foreground mt-2">
                   {monitoringStatus.isRunning
                     ? `${monitoringStatus.totalActiveSources} sources monitored`
-                    : "Monitoring stopped"}
+                    : 'Monitoring stopped'}
                 </p>
               </>
             ) : (
@@ -188,13 +164,10 @@ export default function Dashboard() {
           <Card className="p-12 text-center">
             <CardContent>
               <Cloud className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <CardTitle className="mb-2">
-                No document sources
-              </CardTitle>
+              <CardTitle className="mb-2">No document sources</CardTitle>
               <CardDescription className="mb-6 max-w-md mx-auto">
-                Start by connecting your first document source.
-                Support for Microsoft SharePoint, Google Drive, and other
-                cloud storage platforms.
+                Start by connecting your first document source. Support for Microsoft SharePoint,
+                Google Drive, and other cloud storage platforms.
               </CardDescription>
               <AddSourceDialog onSourceAdded={handleSourceAdded}>
                 <Button size="lg">

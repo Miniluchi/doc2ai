@@ -1,15 +1,15 @@
-import js from "@eslint/js";
-import globals from "globals";
+import js from '@eslint/js';
+import globals from 'globals';
 
 export default [
   {
-    ignores: ["node_modules/**", "prisma/**"],
+    ignores: ['node_modules/**', 'prisma/**'],
   },
   {
-    files: ["**/*.js"],
+    files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "module",
+      sourceType: 'module',
       globals: {
         ...globals.node,
         ...globals.es2021,
@@ -17,11 +17,8 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      "no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
-      "no-console": "off",
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-console': 'off',
     },
   },
 ];

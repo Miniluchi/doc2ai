@@ -1,20 +1,20 @@
-import jwt from "jsonwebtoken";
-import config from "../config/env.js";
+import jwt from 'jsonwebtoken';
+import config from '../config/env.js';
 
 export function authenticateToken(req, res, next) {
-  if (config.nodeEnv === "development") {
-    console.log("Authentication bypassed in development mode");
+  if (config.nodeEnv === 'development') {
+    console.log('Authentication bypassed in development mode');
     return next();
   }
 
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: "Access token required",
-      error: "No token provided in Authorization header",
+      message: 'Access token required',
+      error: 'No token provided in Authorization header',
     });
   }
 
@@ -23,27 +23,27 @@ export function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    console.error("Token verification failed:", error);
+    console.error('Token verification failed:', error);
 
-    if (error.name === "TokenExpiredError") {
+    if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
-        message: "Token expired",
-        error: "Access token has expired",
+        message: 'Token expired',
+        error: 'Access token has expired',
       });
     }
 
     return res.status(403).json({
       success: false,
-      message: "Invalid token",
-      error: "Access token is invalid",
+      message: 'Invalid token',
+      error: 'Access token is invalid',
     });
   }
 }
 
 export function optionalAuth(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
     req.user = null;
@@ -55,48 +55,48 @@ export function optionalAuth(req, res, next) {
     req.user = decoded;
   } catch {
     req.user = null;
-    console.warn("Optional auth: invalid token provided");
+    console.warn('Optional auth: invalid token provided');
   }
 
   next();
 }
 
-const DEFAULT_TEST_PAYLOAD = { userId: "test-user", role: "admin" };
+const DEFAULT_TEST_PAYLOAD = { userId: 'test-user', role: 'admin' };
 
 export function generateTestToken(payload) {
   const tokenPayload = payload || DEFAULT_TEST_PAYLOAD;
   return jwt.sign(tokenPayload, config.jwtSecret, {
-    expiresIn: "24h",
-    issuer: "doc2ai-backend",
-    audience: "doc2ai-frontend",
+    expiresIn: '24h',
+    issuer: 'doc2ai-backend',
+    audience: 'doc2ai-frontend',
   });
 }
 
 export function requirePermission(permission) {
   return (req, res, next) => {
-    if (config.nodeEnv === "development") {
+    if (config.nodeEnv === 'development') {
       return next();
     }
 
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
-        error: "User must be authenticated to access this resource",
+        message: 'Authentication required',
+        error: 'User must be authenticated to access this resource',
       });
     }
 
     const userPermissions = req.user.permissions || [];
-    const userRole = req.user.role || "user";
+    const userRole = req.user.role || 'user';
 
-    if (userRole === "admin") {
+    if (userRole === 'admin') {
       return next();
     }
 
     if (!userPermissions.includes(permission)) {
       return res.status(403).json({
         success: false,
-        message: "Insufficient permissions",
+        message: 'Insufficient permissions',
         error: `Required permission: ${permission}`,
       });
     }
@@ -107,18 +107,18 @@ export function requirePermission(permission) {
 
 export function requireRole(requiredRole) {
   return (req, res, next) => {
-    if (config.nodeEnv === "development") {
+    if (config.nodeEnv === 'development') {
       return next();
     }
 
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
+        message: 'Authentication required',
       });
     }
 
-    const userRole = req.user.role || "user";
+    const userRole = req.user.role || 'user';
     const roleHierarchy = {
       user: 1,
       moderator: 2,
@@ -131,7 +131,7 @@ export function requireRole(requiredRole) {
     if (userLevel < requiredLevel) {
       return res.status(403).json({
         success: false,
-        message: "Insufficient role",
+        message: 'Insufficient role',
         error: `Required role: ${requiredRole}, your role: ${userRole}`,
       });
     }
@@ -140,15 +140,15 @@ export function requireRole(requiredRole) {
   };
 }
 
-export const requireAdmin = requireRole("admin");
+export const requireAdmin = requireRole('admin');
 
 export function logAuthAttempts(req, res, next) {
-  const authHeader = req.headers["authorization"];
+  const authHeader = req.headers['authorization'];
   const hasToken = !!authHeader;
-  const userAgent = req.get("User-Agent");
+  const userAgent = req.get('User-Agent');
   const ip = req.ip || req.connection.remoteAddress;
 
-  console.log("Auth attempt:", {
+  console.log('Auth attempt:', {
     method: req.method,
     url: req.originalUrl,
     hasToken,
@@ -165,8 +165,8 @@ export function publicRoute(req, res, next) {
 }
 
 export function extractUserInfo(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
   req.userInfo = {
     isAuthenticated: false,
@@ -184,7 +184,7 @@ export function extractUserInfo(req, res, next) {
         ...decoded,
       };
     } catch (error) {
-      console.warn("Token extraction failed:", error.message);
+      console.warn('Token extraction failed:', error.message);
     }
   }
 

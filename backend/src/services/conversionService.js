@@ -1,12 +1,9 @@
-import getPrismaClient from "../config/database.js";
-import { ConverterFactory } from "../converters/converterFactory.js";
-import path from "path";
-import fs from "fs-extra";
-import config from "../config/env.js";
-import {
-  enrichSourceWithConfig,
-  getValidatedDestination,
-} from "../utils/configParser.js";
+import getPrismaClient from '../config/database.js';
+import { ConverterFactory } from '../converters/converterFactory.js';
+import path from 'path';
+import fs from 'fs-extra';
+import config from '../config/env.js';
+import { enrichSourceWithConfig, getValidatedDestination } from '../utils/configParser.js';
 
 const prisma = getPrismaClient();
 
@@ -23,7 +20,7 @@ class ConversionService {
             select: { id: true, name: true, platform: true },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       });
@@ -40,7 +37,7 @@ class ConversionService {
         },
       };
     } catch (error) {
-      console.error("Error fetching conversion jobs:", error);
+      console.error('Error fetching conversion jobs:', error);
       throw error;
     }
   }
@@ -55,7 +52,7 @@ class ConversionService {
       });
 
       if (!job) {
-        throw new Error("Conversion job not found");
+        throw new Error('Conversion job not found');
       }
 
       if (job.source) {
@@ -64,7 +61,7 @@ class ConversionService {
 
       return job;
     } catch (error) {
-      console.error("Error fetching job:", error);
+      console.error('Error fetching job:', error);
       throw error;
     }
   }
@@ -85,7 +82,7 @@ class ConversionService {
           fileName,
           filePath,
           fileSize,
-          status: "pending",
+          status: 'pending',
         },
         include: {
           source: true,
@@ -99,7 +96,7 @@ class ConversionService {
       console.log(`Conversion job created: ${fileName}`);
       return job;
     } catch (error) {
-      console.error("Error creating job:", error);
+      console.error('Error creating job:', error);
       throw error;
     }
   }
@@ -121,7 +118,7 @@ class ConversionService {
       job = await prisma.conversionJob.update({
         where: { id: jobId },
         data: {
-          status: "processing",
+          status: 'processing',
           startedAt: new Date(),
           progress: 10,
         },
@@ -139,65 +136,44 @@ class ConversionService {
         throw new Error(`Unsupported file format: ${fileExtension}`);
       }
 
-      await this.updateJobProgress(jobId, 30, "Initializing converter");
+      await this.updateJobProgress(jobId, 30, 'Initializing converter');
 
       await fs.ensureDir(config.storagePath);
       await fs.ensureDir(config.tempPath);
 
-      const outputFileName = path.basename(job.fileName, fileExtension) + ".md";
-      const destinationFolder = getValidatedDestination(
-        job.source.config,
-        job.source.name,
-      );
-      const outputPath = path.join(
-        config.storagePath,
-        destinationFolder,
-        outputFileName,
-      );
+      const outputFileName = path.basename(job.fileName, fileExtension) + '.md';
+      const destinationFolder = getValidatedDestination(job.source.config, job.source.name);
+      const outputPath = path.join(config.storagePath, destinationFolder, outputFileName);
 
       await fs.ensureDir(path.dirname(outputPath));
 
-      await this.updateJobProgress(jobId, 50, "Converting file");
+      await this.updateJobProgress(jobId, 50, 'Converting file');
       const result = await converter.convert(job.filePath, outputPath);
 
       if (!result.success) {
-        throw new Error(result.error || "Conversion failed");
+        throw new Error(result.error || 'Conversion failed');
       }
 
-      await this.updateJobProgress(
-        jobId,
-        80,
-        "Exporting to configured destination",
-      );
+      await this.updateJobProgress(jobId, 80, 'Exporting to configured destination');
 
       try {
         await fs.ensureDir(config.exportPath);
 
-        const destination = getValidatedDestination(
-          job.source.config,
-          job.source.name,
-        );
+        const destination = getValidatedDestination(job.source.config, job.source.name);
 
-        const exportFilePath = path.join(
-          config.exportPath,
-          destination,
-          outputFileName,
-        );
+        const exportFilePath = path.join(config.exportPath, destination, outputFileName);
 
         await fs.ensureDir(path.dirname(exportFilePath));
         await fs.copy(outputPath, exportFilePath);
         console.log(`File exported to: ${exportFilePath}`);
       } catch (error) {
-        console.warn(
-          `Warning: Failed to export to configured destination:`,
-          error.message,
-        );
+        console.warn(`Warning: Failed to export to configured destination:`, error.message);
       }
 
       const completedJob = await prisma.conversionJob.update({
         where: { id: jobId },
         data: {
-          status: "completed",
+          status: 'completed',
           progress: 100,
           outputPath,
           completedAt: new Date(),
@@ -211,7 +187,7 @@ class ConversionService {
           fileName: outputFileName,
           fileType: fileExtension,
           platform: job.source.platform,
-          checksum: result.checksum || "unknown",
+          checksum: result.checksum || 'unknown',
         },
       });
 
@@ -224,7 +200,7 @@ class ConversionService {
         .update({
           where: { id: jobId },
           data: {
-            status: "failed",
+            status: 'failed',
             error: error.message,
             completedAt: new Date(),
           },
@@ -248,7 +224,7 @@ class ConversionService {
         console.log(`Job ${jobId}: ${progress}% - ${message}`);
       }
     } catch (error) {
-      console.error("Error updating job progress:", error);
+      console.error('Error updating job progress:', error);
     }
   }
 
@@ -257,11 +233,11 @@ class ConversionService {
       const job = await prisma.conversionJob.update({
         where: {
           id: jobId,
-          status: { in: ["pending", "processing"] },
+          status: { in: ['pending', 'processing'] },
         },
         data: {
-          status: "failed",
-          error: "Cancelled by user",
+          status: 'failed',
+          error: 'Cancelled by user',
           completedAt: new Date(),
         },
       });
@@ -269,7 +245,7 @@ class ConversionService {
       console.log(`Job cancelled: ${job.fileName}`);
       return job;
     } catch (error) {
-      console.error("Error cancelling job:", error);
+      console.error('Error cancelling job:', error);
       throw error;
     }
   }
@@ -277,7 +253,7 @@ class ConversionService {
   async getJobStats() {
     try {
       const stats = await prisma.conversionJob.groupBy({
-        by: ["status"],
+        by: ['status'],
         _count: {
           _all: true,
         },
@@ -299,7 +275,7 @@ class ConversionService {
         recent,
       };
     } catch (error) {
-      console.error("Error fetching job stats:", error);
+      console.error('Error fetching job stats:', error);
       throw error;
     }
   }
@@ -311,7 +287,7 @@ class ConversionService {
 
       const result = await prisma.conversionJob.deleteMany({
         where: {
-          status: "completed",
+          status: 'completed',
           completedAt: {
             lt: cutoffDate,
           },
@@ -321,7 +297,7 @@ class ConversionService {
       console.log(`Cleaned up ${result.count} old conversion jobs`);
       return result.count;
     } catch (error) {
-      console.error("Error cleaning up jobs:", error);
+      console.error('Error cleaning up jobs:', error);
       throw error;
     }
   }

@@ -1,16 +1,10 @@
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-import { sourcesApi } from "../../services/api";
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { sourcesApi } from '../../services/api';
 
 interface FilePreviewItem {
   id: string;
@@ -37,12 +31,7 @@ interface FilePreviewProps {
   extensions: string[];
 }
 
-export function FilePreview({
-  folderId,
-  folderName,
-  credentials,
-  extensions,
-}: FilePreviewProps) {
+export function FilePreview({ folderId, folderName, credentials, extensions }: FilePreviewProps) {
   const [previewData, setPreviewData] = useState<FilePreviewData | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,15 +42,11 @@ export function FilePreview({
 
     setLoading(true);
     try {
-      const data = await sourcesApi.previewGoogleDriveFiles(
-        folderId,
-        credentials,
-        extensions,
-      );
+      const data = await sourcesApi.previewGoogleDriveFiles(folderId, credentials, extensions);
       setPreviewData(data);
     } catch (error) {
-      console.error("Error fetching file preview:", error);
-      toast.error("Error loading file preview");
+      console.error('Error fetching file preview:', error);
+      toast.error('Error loading file preview');
       setPreviewData(null);
     } finally {
       setLoading(false);
@@ -75,20 +60,20 @@ export function FilePreview({
   }, [folderId, credentials?.refreshToken, extensions, fetchFilePreview]);
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B";
+    if (bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
+    const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const getFileIcon = (mimeType: string) => {
-    if (!mimeType) return "📄";
-    if (mimeType.includes("pdf")) return "📄";
-    if (mimeType.includes("word")) return "📝";
-    if (mimeType.includes("document")) return "📝";
-    if (mimeType.includes("text")) return "📄";
-    return "📄";
+    if (!mimeType) return '📄';
+    if (mimeType.includes('pdf')) return '📄';
+    if (mimeType.includes('word')) return '📝';
+    if (mimeType.includes('document')) return '📝';
+    if (mimeType.includes('text')) return '📄';
+    return '📄';
   };
 
   if (!folderId) {
@@ -103,8 +88,7 @@ export function FilePreview({
           File preview
         </CardTitle>
         <CardDescription>
-          Files that will be automatically converted from the "{folderName}"
-          folder
+          Files that will be automatically converted from the "{folderName}" folder
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -118,15 +102,11 @@ export function FilePreview({
             <div className="flex gap-4">
               <Badge variant="outline">
                 {previewData.totalFiles} file
-                {previewData.totalFiles > 1 ? "s" : ""} total
+                {previewData.totalFiles > 1 ? 's' : ''} total
               </Badge>
-              <Badge
-                variant={
-                  previewData.convertibleFiles > 0 ? "default" : "secondary"
-                }
-              >
+              <Badge variant={previewData.convertibleFiles > 0 ? 'default' : 'secondary'}>
                 {previewData.convertibleFiles} convertible file
-                {previewData.convertibleFiles > 1 ? "s" : ""}
+                {previewData.convertibleFiles > 1 ? 's' : ''}
               </Badge>
             </div>
 
@@ -139,34 +119,25 @@ export function FilePreview({
                       className="flex items-center justify-between p-2 rounded-lg border bg-background"
                     >
                       <div className="flex items-center space-x-3">
-                        <span className="text-lg">
-                          {getFileIcon(file.mimeType)}
-                        </span>
+                        <span className="text-lg">{getFileIcon(file.mimeType)}</span>
                         <div>
-                          <p className="font-medium text-sm">
-                            {file.name || "Unnamed file"}
-                          </p>
+                          <p className="font-medium text-sm">{file.name || 'Unnamed file'}</p>
                           <p className="text-xs text-muted-foreground">
-                            {file.size
-                              ? formatFileSize(file.size)
-                              : "Unknown size"}{" "}
-                            • Modified{" "}
+                            {file.size ? formatFileSize(file.size) : 'Unknown size'} • Modified{' '}
                             {file.modifiedTime
-                              ? new Date(file.modifiedTime).toLocaleDateString(
-                                  "en-US",
-                                )
-                              : "Unknown date"}
+                              ? new Date(file.modifiedTime).toLocaleDateString('en-US')
+                              : 'Unknown date'}
                           </p>
                         </div>
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {file.mimeType?.includes("pdf")
-                          ? "PDF"
-                          : file.mimeType?.includes("word")
-                            ? "Word"
-                            : file.mimeType?.includes("document")
-                              ? "Google Docs"
-                              : "Document"}
+                        {file.mimeType?.includes('pdf')
+                          ? 'PDF'
+                          : file.mimeType?.includes('word')
+                            ? 'Word'
+                            : file.mimeType?.includes('document')
+                              ? 'Google Docs'
+                              : 'Document'}
                       </Badge>
                     </div>
                   ))}
@@ -176,9 +147,7 @@ export function FilePreview({
               <div className="text-center py-6 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>No convertible files found</p>
-                <p className="text-sm">
-                  Supported formats: {extensions.join(", ")}
-                </p>
+                <p className="text-sm">Supported formats: {extensions.join(', ')}</p>
               </div>
             )}
           </div>

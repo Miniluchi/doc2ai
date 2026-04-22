@@ -1,17 +1,17 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { ChevronRight, Folder, FolderOpen, Loader2 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-import { sourcesApi } from "../../services/api";
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { ChevronRight, Folder, FolderOpen, Loader2 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { sourcesApi } from '../../services/api';
 
 interface GoogleDriveFolder {
   id: string;
@@ -19,7 +19,7 @@ interface GoogleDriveFolder {
   path: string;
   modifiedTime: string;
   parents?: string[];
-  type: "folder";
+  type: 'folder';
 }
 
 interface GoogleDriveFolderPickerProps {
@@ -46,28 +46,25 @@ export function GoogleDriveFolderPicker({
 }: GoogleDriveFolderPickerProps) {
   const [folders, setFolders] = useState<GoogleDriveFolder[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentFolderId, setCurrentFolderId] = useState("root");
+  const [currentFolderId, setCurrentFolderId] = useState('root');
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([
-    { id: "root", name: "My Drive" },
+    { id: 'root', name: 'My Drive' },
   ]);
 
   const fetchFolders = useCallback(
     async (folderId: string) => {
       if (!credentials?.refreshToken) {
-        toast.error("Google Drive credentials missing");
+        toast.error('Google Drive credentials missing');
         return;
       }
 
       setLoading(true);
       try {
-        const folders = await sourcesApi.getGoogleDriveFolders(
-          folderId,
-          credentials,
-        );
+        const folders = await sourcesApi.getGoogleDriveFolders(folderId, credentials);
         setFolders(folders);
       } catch (error) {
-        console.error("Error fetching folders:", error);
-        toast.error("Error loading Google Drive folders");
+        console.error('Error fetching folders:', error);
+        toast.error('Error loading Google Drive folders');
         setFolders([]);
       } finally {
         setLoading(false);
@@ -101,9 +98,9 @@ export function GoogleDriveFolderPicker({
       path: `/${breadcrumbs
         .slice(1)
         .map((b) => b.name)
-        .join("/")}`,
+        .join('/')}`,
       modifiedTime: new Date().toISOString(),
-      type: "folder",
+      type: 'folder',
     });
     onClose();
   };
@@ -137,9 +134,7 @@ export function GoogleDriveFolderPicker({
                 >
                   {breadcrumb.name}
                 </button>
-                {index < breadcrumbs.length - 1 && (
-                  <ChevronRight className="h-4 w-4" />
-                )}
+                {index < breadcrumbs.length - 1 && <ChevronRight className="h-4 w-4" />}
               </React.Fragment>
             ))}
           </div>
@@ -148,16 +143,10 @@ export function GoogleDriveFolderPicker({
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
-              Current folder:{" "}
-              <span className="font-medium">
-                {breadcrumbs[breadcrumbs.length - 1].name}
-              </span>
+              Current folder:{' '}
+              <span className="font-medium">{breadcrumbs[breadcrumbs.length - 1].name}</span>
             </div>
-            <Button
-              onClick={handleSelectCurrentFolder}
-              variant="outline"
-              size="sm"
-            >
+            <Button onClick={handleSelectCurrentFolder} variant="outline" size="sm">
               Select this folder
             </Button>
           </div>
@@ -174,9 +163,7 @@ export function GoogleDriveFolderPicker({
               <div className="text-center py-8 text-muted-foreground">
                 <Folder className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>No subfolders found</p>
-                <p className="text-sm">
-                  You can select the current folder above
-                </p>
+                <p className="text-sm">You can select the current folder above</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -193,10 +180,7 @@ export function GoogleDriveFolderPicker({
                       <div>
                         <p className="font-medium">{folder.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Modified{" "}
-                          {new Date(folder.modifiedTime).toLocaleDateString(
-                            "en-US",
-                          )}
+                          Modified {new Date(folder.modifiedTime).toLocaleDateString('en-US')}
                         </p>
                       </div>
                     </div>
@@ -211,11 +195,7 @@ export function GoogleDriveFolderPicker({
                       >
                         Select
                       </Button>
-                      <Button
-                        onClick={() => handleFolderClick(folder)}
-                        variant="ghost"
-                        size="sm"
-                      >
+                      <Button onClick={() => handleFolderClick(folder)} variant="ghost" size="sm">
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>

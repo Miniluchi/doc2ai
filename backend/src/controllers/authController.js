@@ -1,5 +1,5 @@
-import axios from "axios";
-import config from "../config/env.js";
+import axios from 'axios';
+import config from '../config/env.js';
 
 class AuthController {
   // GET /api/auth/google/callback
@@ -10,7 +10,7 @@ class AuthController {
       if (error) {
         return res.status(400).json({
           success: false,
-          message: "Authorization denied",
+          message: 'Authorization denied',
           error: error,
         });
       }
@@ -18,38 +18,37 @@ class AuthController {
       if (!code) {
         return res.status(400).json({
           success: false,
-          message: "Missing authorization code",
-          error: "No code parameter found in callback",
+          message: 'Missing authorization code',
+          error: 'No code parameter found in callback',
         });
       }
 
       const tokenResponse = await axios.post(
-        "https://oauth2.googleapis.com/token",
+        'https://oauth2.googleapis.com/token',
         {
           client_id: process.env.GOOGLE_CLIENT_ID,
           client_secret: process.env.GOOGLE_CLIENT_SECRET,
           code: code,
-          grant_type: "authorization_code",
+          grant_type: 'authorization_code',
           redirect_uri: config.google.redirectUri,
         },
         {
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
         },
       );
 
-      const { access_token, refresh_token, expires_in, scope } =
-        tokenResponse.data;
+      const { access_token, refresh_token, expires_in, scope } = tokenResponse.data;
 
       if (!refresh_token) {
         return res.status(400).json({
           success: false,
-          message: "No refresh token received",
+          message: 'No refresh token received',
           error:
-            "Google did not provide a refresh token. Try adding prompt=consent to the authorization URL.",
+            'Google did not provide a refresh token. Try adding prompt=consent to the authorization URL.',
           data: {
-            access_token: access_token ? "received" : "missing",
+            access_token: access_token ? 'received' : 'missing',
             expires_in,
             scope,
           },
@@ -58,7 +57,7 @@ class AuthController {
 
       try {
         const userInfoResponse = await axios.get(
-          "https://www.googleapis.com/drive/v3/about?fields=user",
+          'https://www.googleapis.com/drive/v3/about?fields=user',
           {
             headers: {
               Authorization: `Bearer ${access_token}`,
@@ -80,16 +79,12 @@ class AuthController {
           },
         };
 
-        const encodedData = Buffer.from(JSON.stringify(successData)).toString(
-          "base64",
-        );
+        const encodedData = Buffer.from(JSON.stringify(successData)).toString('base64');
         const frontendUrl = config.corsOrigin;
 
-        return res.redirect(
-          `${frontendUrl}/auth/callback?data=${encodedData}&success=true`,
-        );
+        return res.redirect(`${frontendUrl}/auth/callback?data=${encodedData}&success=true`);
       } catch (userInfoError) {
-        console.warn("Could not fetch user info:", userInfoError.message);
+        console.warn('Could not fetch user info:', userInfoError.message);
 
         const fallbackData = {
           refresh_token,
@@ -97,15 +92,13 @@ class AuthController {
           expires_in,
           scope,
           user: {
-            email: "unknown@gmail.com",
-            name: "Google User",
+            email: 'unknown@gmail.com',
+            name: 'Google User',
             photoLink: null,
           },
         };
 
-        const encodedFallbackData = Buffer.from(
-          JSON.stringify(fallbackData),
-        ).toString("base64");
+        const encodedFallbackData = Buffer.from(JSON.stringify(fallbackData)).toString('base64');
         const frontendUrl = config.corsOrigin;
 
         return res.redirect(
@@ -113,16 +106,14 @@ class AuthController {
         );
       }
     } catch (error) {
-      console.error("Error in Google OAuth callback:", error);
+      console.error('Error in Google OAuth callback:', error);
 
-      let errorMessage = "OAuth callback failed";
+      let errorMessage = 'OAuth callback failed';
       let errorDetails = error.message;
 
       if (error.response?.data) {
         errorMessage =
-          error.response.data.error_description ||
-          error.response.data.error ||
-          errorMessage;
+          error.response.data.error_description || error.response.data.error || errorMessage;
         errorDetails = error.response.data;
       }
 
@@ -137,36 +128,36 @@ class AuthController {
   // GET /api/auth/google
   async getGoogleAuthUrl(req, res) {
     try {
-      const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+      const baseUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
       const params = new URLSearchParams({
         client_id: process.env.GOOGLE_CLIENT_ID,
         redirect_uri: config.google.redirectUri,
-        response_type: "code",
-        scope: "https://www.googleapis.com/auth/drive",
-        access_type: "offline",
-        prompt: "consent",
+        response_type: 'code',
+        scope: 'https://www.googleapis.com/auth/drive',
+        access_type: 'offline',
+        prompt: 'consent',
       });
 
       const authUrl = `${baseUrl}?${params.toString()}`;
 
       res.json({
         success: true,
-        message: "Google authorization URL generated",
+        message: 'Google authorization URL generated',
         data: {
           authUrl,
           instructions: [
-            "1. Open the authUrl in your browser",
-            "2. Sign in to Google and authorize the application",
-            "3. You will be redirected back with your tokens",
-            "4. Copy the refresh_token from the response",
+            '1. Open the authUrl in your browser',
+            '2. Sign in to Google and authorize the application',
+            '3. You will be redirected back with your tokens',
+            '4. Copy the refresh_token from the response',
           ],
         },
       });
     } catch (error) {
-      console.error("Error generating Google auth URL:", error);
+      console.error('Error generating Google auth URL:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to generate authorization URL",
+        message: 'Failed to generate authorization URL',
         error: error.message,
       });
     }
