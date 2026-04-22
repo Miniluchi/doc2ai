@@ -1,4 +1,5 @@
 import monitoringService from '../services/monitoringService.js';
+import logger from '../config/logger.js';
 
 class MonitoringController {
   // GET /api/monitoring/status
@@ -11,7 +12,7 @@ class MonitoringController {
         data: status,
       });
     } catch (error) {
-      console.error('Error in getStatus:', error);
+      logger.error({ err: error }, 'Error in getStatus');
       res.status(500).json({
         success: false,
         message: 'Failed to get monitoring status',
@@ -37,7 +38,7 @@ class MonitoringController {
         message: 'Monitoring service started successfully',
       });
     } catch (error) {
-      console.error('Error in startMonitoring:', error);
+      logger.error({ err: error }, 'Error in startMonitoring');
       res.status(500).json({
         success: false,
         message: 'Failed to start monitoring service',
@@ -63,7 +64,7 @@ class MonitoringController {
         message: 'Monitoring service stopped successfully',
       });
     } catch (error) {
-      console.error('Error in stopMonitoring:', error);
+      logger.error({ err: error }, 'Error in stopMonitoring');
       res.status(500).json({
         success: false,
         message: 'Failed to stop monitoring service',
@@ -85,7 +86,7 @@ class MonitoringController {
         data: logs,
       });
     } catch (error) {
-      console.error('Error in getLogs:', error);
+      logger.error({ err: error }, 'Error in getLogs');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch monitoring logs',
@@ -113,7 +114,7 @@ class MonitoringController {
         message: 'Source sync completed successfully',
       });
     } catch (error) {
-      console.error('Error in syncSource:', error);
+      logger.error({ err: error }, 'Error in syncSource');
       res.status(500).json({
         success: false,
         message: 'Failed to sync source',
@@ -140,7 +141,7 @@ class MonitoringController {
         },
       });
     } catch (error) {
-      console.error('Error in healthCheck:', error);
+      logger.error({ err: error }, 'Error in healthCheck');
       res.status(503).json({
         success: false,
         data: {
@@ -155,7 +156,7 @@ class MonitoringController {
   // POST /api/monitoring/restart
   async restartMonitoring(req, res) {
     try {
-      console.log('Restarting monitoring service...');
+      logger.info('Restarting monitoring service...');
 
       if (monitoringService.isRunning) {
         await monitoringService.stop();
@@ -169,7 +170,7 @@ class MonitoringController {
         message: 'Monitoring service restarted successfully',
       });
     } catch (error) {
-      console.error('Error in restartMonitoring:', error);
+      logger.error({ err: error }, 'Error in restartMonitoring');
       res.status(500).json({
         success: false,
         message: 'Failed to restart monitoring service',
@@ -191,7 +192,7 @@ class MonitoringController {
         data: logs,
       });
     } catch (error) {
-      console.error('Error in getSourceLogs:', error);
+      logger.error({ err: error }, 'Error in getSourceLogs');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch source logs',

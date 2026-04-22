@@ -3,6 +3,7 @@ import { encryptCredentials, decryptCredentials } from '../utils/encryption.js';
 import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
 import ConversionService from './conversionService.js';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 
 const prisma = getPrismaClient();
 
@@ -33,7 +34,7 @@ class SourceService {
         };
       });
     } catch (error) {
-      console.error('Error fetching sources:', error);
+      logger.error({ err: error }, 'Error fetching sources');
       throw new Error('Failed to fetch sources');
     }
   }
@@ -61,7 +62,7 @@ class SourceService {
         config: JSON.parse(source.config),
       };
     } catch (error) {
-      console.error('Error fetching source:', error);
+      logger.error({ err: error }, 'Error fetching source');
       throw error;
     }
   }
@@ -93,10 +94,10 @@ class SourceService {
         },
       });
 
-      console.log(`Source created: ${name} (${platform})`);
+      logger.info(`Source created: ${name} (${platform})`);
       return source;
     } catch (error) {
-      console.error('Error creating source:', error);
+      logger.error({ err: error }, 'Error creating source');
       throw error;
     }
   }
@@ -124,10 +125,10 @@ class SourceService {
         },
       });
 
-      console.log(`Source updated: ${source.name}`);
+      logger.info(`Source updated: ${source.name}`);
       return source;
     } catch (error) {
-      console.error('Error updating source:', error);
+      logger.error({ err: error }, 'Error updating source');
       throw error;
     }
   }
@@ -138,10 +139,10 @@ class SourceService {
         where: { id },
       });
 
-      console.log(`Source deleted: ${id}`);
+      logger.info(`Source deleted: ${id}`);
       return { success: true };
     } catch (error) {
-      console.error('Error deleting source:', error);
+      logger.error({ err: error }, 'Error deleting source');
       throw error;
     }
   }
@@ -165,11 +166,11 @@ class SourceService {
 
       const result = await connector.testConnection();
 
-      console.log(`Credentials test for ${platform}: ${result.success ? 'success' : 'failed'}`);
+      logger.info(`Credentials test for ${platform}: ${result.success ? 'success' : 'failed'}`);
 
       return result;
     } catch (error) {
-      console.error('Credentials test failed:', error);
+      logger.error({ err: error }, 'Credentials test failed');
 
       return {
         success: false,
@@ -209,7 +210,7 @@ class SourceService {
 
       return result;
     } catch (error) {
-      console.error('Connection test failed:', error);
+      logger.error({ err: error }, 'Connection test failed');
 
       await prisma.syncLog.create({
         data: {
@@ -237,7 +238,7 @@ class SourceService {
         message: 'Sync completed successfully',
       };
     } catch (error) {
-      console.error('Sync failed:', error);
+      logger.error({ err: error }, 'Sync failed');
       throw error;
     }
   }
@@ -268,7 +269,7 @@ class SourceService {
         recentJobs,
       };
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      logger.error({ err: error }, 'Error fetching stats');
       throw error;
     }
   }
@@ -281,7 +282,7 @@ class SourceService {
    */
   async getGoogleDriveFolders(parentId, credentials) {
     try {
-      console.log(`Fetching Google Drive folders from parent: ${parentId}`);
+      logger.info(`Fetching Google Drive folders from parent: ${parentId}`);
 
       const config = {
         credentials: credentials,
@@ -297,10 +298,10 @@ class SourceService {
 
       await connector.cleanup();
 
-      console.log(`Found ${folders.length} folders`);
+      logger.info(`Found ${folders.length} folders`);
       return folders;
     } catch (error) {
-      console.error('Error fetching Google Drive folders:', error);
+      logger.error({ err: error }, 'Error fetching Google Drive folders');
       throw error;
     }
   }
@@ -314,7 +315,7 @@ class SourceService {
    */
   async previewGoogleDriveFiles(folderId, credentials, allowedExtensions) {
     try {
-      console.log(`Previewing files in Google Drive folder: ${folderId}`);
+      logger.info(`Previewing files in Google Drive folder: ${folderId}`);
 
       let extensionsArray;
       if (Array.isArray(allowedExtensions)) {
@@ -366,7 +367,7 @@ class SourceService {
 
       await connector.cleanup();
 
-      console.log(`Found ${filteredFiles.length} convertible files out of ${files.length} total`);
+      logger.info(`Found ${filteredFiles.length} convertible files out of ${files.length} total`);
 
       return {
         totalFiles: files.length,
@@ -380,7 +381,7 @@ class SourceService {
         })),
       };
     } catch (error) {
-      console.error('Error previewing Google Drive files:', error);
+      logger.error({ err: error }, 'Error previewing Google Drive files');
       throw error;
     }
   }
@@ -391,7 +392,7 @@ class SourceService {
     let errorCount = 0;
 
     try {
-      console.log(`Starting conversion processing for ${files.length} files`);
+      logger.info(`Starting conversion processing for ${files.length} files`);
 
       for (const file of files) {
         try {
@@ -411,21 +412,21 @@ class SourceService {
             }
           }
 
-          console.log(`Processing file: ${file.name}`);
+          logger.info(`Processing file: ${file.name}`);
 
           const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
           const job = await conversionService.createJob(source.id, file.name, tempPath, file.size);
 
-          console.log(`Created conversion job for: ${file.name}`);
+          logger.info(`Created conversion job for: ${file.name}`);
 
           await conversionService.processJob(job.id);
 
           processedCount++;
-          console.log(`Successfully converted: ${file.name}`);
+          logger.info(`Successfully converted: ${file.name}`);
         } catch (error) {
           errorCount++;
-          console.error(`❌ Failed to process file ${file.name}:`, error);
+          logger.error({ err: error, fileName: file.name }, 'Failed to process file');
 
           await prisma.syncLog.create({
             data: {
@@ -457,11 +458,11 @@ class SourceService {
         },
       });
 
-      console.log(
+      logger.info(
         `Processing completed for source: ${source.name} (${processedCount}/${files.length} files converted)`,
       );
     } catch (error) {
-      console.error(`❌ Critical error during file processing for source ${source.name}:`, error);
+      logger.error({ err: error, source: source.name }, 'Critical error during file processing');
 
       await prisma.syncLog.update({
         where: { id: syncLogId },

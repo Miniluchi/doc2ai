@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // Pour GCM
@@ -23,7 +24,7 @@ export function encryptCredentials(data) {
 
     return result;
   } catch (error) {
-    console.error('Encryption failed:', error);
+    logger.error({ err: error }, 'Encryption failed');
     throw new Error('Failed to encrypt credentials');
   }
 }
@@ -51,7 +52,7 @@ export function decryptCredentials(encryptedData) {
       return decrypted;
     }
   } catch (error) {
-    console.error('Decryption failed:', error);
+    logger.error({ err: error }, 'Decryption failed');
     throw new Error('Failed to decrypt credentials');
   }
 }
@@ -72,7 +73,7 @@ export function verifyPassword(password, hashedPassword) {
     const verifyHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     return hash === verifyHash;
   } catch (error) {
-    console.error('Password verification failed:', error);
+    logger.error({ err: error }, 'Password verification failed');
     return false;
   }
 }

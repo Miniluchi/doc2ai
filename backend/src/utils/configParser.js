@@ -1,3 +1,5 @@
+import logger from '../config/logger.js';
+
 export function parseSourceConfig(source) {
   if (!source || !source.config) {
     throw new Error('Source configuration is missing');
@@ -11,7 +13,7 @@ export function parseSourceConfig(source) {
     try {
       return JSON.parse(source.config);
     } catch (error) {
-      console.error('Failed to parse source config JSON:', error);
+      logger.error({ err: error }, 'Failed to parse source config JSON');
       throw new Error(`Invalid source configuration JSON: ${error.message}`);
     }
   }
@@ -71,7 +73,7 @@ export function enrichSourceWithConfig(source) {
       config: parsedConfig,
     };
   } catch (error) {
-    console.error(`Failed to enrich source ${source.id || 'unknown'}:`, error);
+    logger.error({ err: error, sourceId: source.id }, 'Failed to enrich source');
     throw error;
   }
 }

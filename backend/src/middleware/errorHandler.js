@@ -1,7 +1,8 @@
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 
 export function errorHandler(error, req, res, _next) {
-  console.error('❌ Unhandled error:', error);
+  logger.error({ err: error }, 'Unhandled error');
 
   if (error.code === 'P2002') {
     return res.status(409).json({
@@ -144,15 +145,16 @@ export function validationErrorHandler(error, req, res, next) {
 }
 
 export function logError(error, req, res, next) {
-  console.error('Error details:', {
-    message: error.message,
-    stack: error.stack,
-    url: req.originalUrl,
-    method: req.method,
-    userAgent: req.get('User-Agent'),
-    ip: req.ip,
-    timestamp: new Date().toISOString(),
-  });
+  logger.error(
+    {
+      err: error,
+      url: req.originalUrl,
+      method: req.method,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip,
+    },
+    'Request error',
+  );
 
   next(error);
 }

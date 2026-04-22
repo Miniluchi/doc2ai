@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { generateFileChecksum } from '../utils/encryption.js';
+import logger from '../config/logger.js';
 
 class BaseConverter {
   constructor() {
@@ -30,7 +31,7 @@ class BaseConverter {
 
       return true;
     } catch (error) {
-      console.error(`File validation failed for ${filePath}:`, error);
+      logger.error({ err: error, filePath }, 'File validation failed');
       throw error;
     }
   }
@@ -43,7 +44,7 @@ class BaseConverter {
         await fs.remove(outputPath);
       }
     } catch (error) {
-      console.error(`Failed to prepare output file ${outputPath}:`, error);
+      logger.error({ err: error, outputPath }, 'Failed to prepare output file');
       throw error;
     }
   }
@@ -89,24 +90,25 @@ class BaseConverter {
 
       const checksum = await generateFileChecksum(outputPath);
 
-      console.log(
-        `✅ Markdown saved: ${outputPath} (${cleanedMarkdown.length} chars, checksum: ${checksum.substring(0, 8)}...)`,
+      logger.info(
+        { outputPath, chars: cleanedMarkdown.length, checksum: checksum.substring(0, 8) },
+        'Markdown saved',
       );
 
       return checksum;
     } catch (error) {
-      console.error(`Failed to save markdown to ${outputPath}:`, error);
+      logger.error({ err: error, outputPath }, 'Failed to save markdown');
       throw error;
     }
   }
 
   log(operation, details = {}) {
-    console.log(`[${this.name}] ${operation}:`, details);
+    logger.info({ converter: this.name, ...details }, operation);
   }
 
   handleError(error, operation, filePath) {
     const errorMessage = `${operation} failed for ${filePath}: ${error.message}`;
-    console.error(`[${this.name}] ${errorMessage}`, error);
+    logger.error({ err: error, converter: this.name, operation, filePath }, errorMessage);
 
     return {
       success: false,
@@ -139,7 +141,7 @@ class BaseConverter {
   }
 
   updateProgress(progress, message) {
-    console.log(`[${this.name}] ${progress}% - ${message}`);
+    logger.info({ converter: this.name, progress }, message);
   }
 }
 

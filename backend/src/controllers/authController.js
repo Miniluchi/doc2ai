@@ -1,5 +1,6 @@
 import axios from 'axios';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 
 class AuthController {
   // GET /api/auth/google/callback
@@ -84,7 +85,7 @@ class AuthController {
 
         return res.redirect(`${frontendUrl}/auth/callback?data=${encodedData}&success=true`);
       } catch (userInfoError) {
-        console.warn('Could not fetch user info:', userInfoError.message);
+        logger.warn({ err: userInfoError }, 'Could not fetch user info');
 
         const fallbackData = {
           refresh_token,
@@ -106,7 +107,7 @@ class AuthController {
         );
       }
     } catch (error) {
-      console.error('Error in Google OAuth callback:', error);
+      logger.error({ err: error }, 'Error in Google OAuth callback');
 
       let errorMessage = 'OAuth callback failed';
       let errorDetails = error.message;
@@ -154,7 +155,7 @@ class AuthController {
         },
       });
     } catch (error) {
-      console.error('Error generating Google auth URL:', error);
+      logger.error({ err: error }, 'Error generating Google auth URL');
       res.status(500).json({
         success: false,
         message: 'Failed to generate authorization URL',

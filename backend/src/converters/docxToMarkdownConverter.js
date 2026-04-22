@@ -1,6 +1,7 @@
 import BaseConverter from './baseConverter.js';
 import { createRequire } from 'module';
 import path from 'path';
+import logger from '../config/logger.js';
 
 const require = createRequire(import.meta.url);
 const mammoth = require('mammoth');
@@ -145,7 +146,7 @@ class DocxToMarkdownConverter extends BaseConverter {
       fs.readSync(fd, buffer, 0, 8, 0);
 
       if (extension === '.docx' && !buffer.toString('ascii', 0, 2).includes('PK')) {
-        console.warn(`Warning: ${filePath} may not be a valid DOCX file`);
+        logger.warn({ filePath }, 'File may not be a valid DOCX file');
       }
     } finally {
       fs.closeSync(fd);

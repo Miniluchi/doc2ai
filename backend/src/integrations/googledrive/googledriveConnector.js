@@ -2,6 +2,7 @@ import DriveConnector from '../base/driveConnector.js';
 import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
+import logger from '../../config/logger.js';
 
 class GoogleDriveConnector extends DriveConnector {
   constructor(config) {
@@ -271,7 +272,7 @@ class GoogleDriveConnector extends DriveConnector {
 
         pageToken = response.data.nextPageToken || response.data.newStartPageToken;
       } catch (error) {
-        console.error('Error in watchForChanges polling:', error);
+        logger.error({ err: error }, 'Error in watchForChanges polling');
       }
     };
 

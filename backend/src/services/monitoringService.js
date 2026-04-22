@@ -5,6 +5,7 @@ import queueService from './queueService.js';
 import { decryptCredentials } from '../utils/encryption.js';
 import cron from 'node-cron';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 
 const prisma = getPrismaClient();
 
@@ -35,11 +36,11 @@ class MonitoringService {
   async start() {
     try {
       if (this.isRunning) {
-        console.warn('⚠️ Monitoring service is already running');
+        logger.warn('Monitoring service is already running');
         return;
       }
 
-      console.log('Starting monitoring service...');
+      logger.info('Starting monitoring service...');
 
       const activeSources = await prisma.source.findMany({
         where: { status: 'active' },
@@ -52,16 +53,16 @@ class MonitoringService {
       this.startCronJob();
 
       this.isRunning = true;
-      console.log(`Monitoring service started for ${activeSources.length} sources`);
+      logger.info(`Monitoring service started for ${activeSources.length} sources`);
     } catch (error) {
-      console.error('❌ Failed to start monitoring service:', error);
+      logger.error({ err: error }, 'Failed to start monitoring service');
       throw error;
     }
   }
 
   async stop() {
     try {
-      console.log('Stopping monitoring service...');
+      logger.info('Stopping monitoring service...');
 
       for (const [sourceId] of this.activeMonitors) {
         await this.stopSourceMonitoring(sourceId);
@@ -73,9 +74,9 @@ class MonitoringService {
       }
 
       this.isRunning = false;
-      console.log('Monitoring service stopped');
+      logger.info('Monitoring service stopped');
     } catch (error) {
-      console.error('❌ Failed to stop monitoring service:', error);
+      logger.error({ err: error }, 'Failed to stop monitoring service');
       throw error;
     }
   }
@@ -86,7 +87,7 @@ class MonitoringService {
     this.cronJob = cron.schedule(
       cronExpression,
       async () => {
-        console.log('Running scheduled sync...');
+        logger.info('Running scheduled sync...');
         await this.syncAllActiveSources();
       },
       {
@@ -95,7 +96,7 @@ class MonitoringService {
       },
     );
 
-    console.log(`Cron job scheduled: every ${config.syncIntervalMinutes} minutes`);
+    logger.info(`Cron job scheduled: every ${config.syncIntervalMinutes} minutes`);
   }
 
   /**
@@ -104,7 +105,7 @@ class MonitoringService {
    */
   async startSourceMonitoring(source) {
     try {
-      console.log(`Starting monitoring for: ${source.name}`);
+      logger.info(`Starting monitoring for: ${source.name}`);
 
       const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
@@ -130,7 +131,7 @@ class MonitoringService {
         },
       });
     } catch (error) {
-      console.error(`❌ Failed to start monitoring for ${source.name}:`, error);
+      logger.error({ err: error, source: source.name }, 'Failed to start monitoring for source');
 
       await prisma.syncLog.create({
         data: {
@@ -151,7 +152,7 @@ class MonitoringService {
         return;
       }
 
-      console.log(`Stopping monitoring for: ${monitor.source.name}`);
+      logger.info(`Stopping monitoring for: ${monitor.source.name}`);
 
       if (monitor.connector && typeof monitor.connector.cleanup === 'function') {
         await monitor.connector.cleanup();
@@ -168,7 +169,7 @@ class MonitoringService {
         },
       });
     } catch (error) {
-      console.error(`❌ Error stopping monitoring for source ${sourceId}:`, error);
+      logger.error({ err: error, sourceId }, 'Error stopping monitoring for source');
     }
   }
 
@@ -179,7 +180,7 @@ class MonitoringService {
       try {
         await this.syncSource(monitor.source.id);
       } catch (error) {
-        console.error(`❌ Sync failed for ${monitor.source.name}:`, error);
+        logger.error({ err: error, source: monitor.source.name }, 'Sync failed for source');
       }
     }
   }
@@ -191,7 +192,7 @@ class MonitoringService {
    */
   async syncSource(sourceId) {
     if (this.syncInProgress.has(sourceId)) {
-      console.warn(`⚠️ Sync already in progress for source: ${sourceId}`);
+      logger.warn({ sourceId }, 'Sync already in progress for source');
       return;
     }
 
@@ -219,7 +220,7 @@ class MonitoringService {
         connector = monitor.connector;
         monitor.source = source;
       } else {
-        console.log(`Manual sync for source: ${sourceId}`);
+        logger.info(`Manual sync for source: ${sourceId}`);
 
         const { decryptedConfig } = this._parseAndDecryptConfig(source);
 
@@ -227,7 +228,7 @@ class MonitoringService {
         await connector.authenticate();
       }
 
-      console.log(`Syncing source: ${source.name}`);
+      logger.info(`Syncing source: ${source.name}`);
 
       const { parsedConfig } = this._parseAndDecryptConfig(source);
 
@@ -275,7 +276,7 @@ class MonitoringService {
         return !isExcluded;
       });
 
-      console.log(`Found ${filteredFiles.length} files to process`);
+      logger.info(`Found ${filteredFiles.length} files to process`);
 
       for (const file of filteredFiles) {
         await this.processFileChange(sourceId, file, connector);
@@ -300,7 +301,7 @@ class MonitoringService {
         },
       });
     } catch (error) {
-      console.error(`❌ Sync failed for source ${sourceId}:`, error);
+      logger.error({ err: error, sourceId }, 'Sync failed for source');
 
       try {
         await prisma.syncLog.create({
@@ -313,7 +314,7 @@ class MonitoringService {
           },
         });
       } catch (dbError) {
-        console.error('Failed to log sync error:', dbError);
+        logger.error({ err: dbError }, 'Failed to log sync error');
       }
 
       throw error;
@@ -335,7 +336,7 @@ class MonitoringService {
         return;
       }
 
-      console.log(`Processing file: ${file.name}`);
+      logger.info(`Processing file: ${file.name}`);
 
       const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
@@ -343,9 +344,9 @@ class MonitoringService {
 
       await queueService.enqueueConversion(job.id, file.name);
 
-      console.log(`Job queued for async processing: ${file.name}`);
+      logger.info(`Job queued for async processing: ${file.name}`);
     } catch (error) {
-      console.error(`❌ Failed to process file ${file.name}:`, error);
+      logger.error({ err: error, fileName: file.name }, 'Failed to process file');
 
       await prisma.syncLog.create({
         data: {
@@ -390,7 +391,7 @@ class MonitoringService {
         recentLogs,
       };
     } catch (error) {
-      console.error('Error getting monitoring status:', error);
+      logger.error({ err: error }, 'Error getting monitoring status');
       throw error;
     }
   }
@@ -412,7 +413,7 @@ class MonitoringService {
 
       return logs;
     } catch (error) {
-      console.error('Error fetching logs:', error);
+      logger.error({ err: error }, 'Error fetching logs');
       throw error;
     }
   }

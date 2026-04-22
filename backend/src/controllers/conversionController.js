@@ -1,4 +1,5 @@
 import ConversionService from '../services/conversionService.js';
+import logger from '../config/logger.js';
 
 const conversionService = new ConversionService();
 
@@ -18,7 +19,7 @@ class ConversionController {
         pagination: result.pagination,
       });
     } catch (error) {
-      console.error('Error in getAllJobs:', error);
+      logger.error({ err: error }, 'Error in getAllJobs');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch conversion jobs',
@@ -38,7 +39,7 @@ class ConversionController {
         data: job,
       });
     } catch (error) {
-      console.error('Error in getJobById:', error);
+      logger.error({ err: error }, 'Error in getJobById');
 
       if (error.message === 'Conversion job not found') {
         return res.status(404).json({
@@ -73,10 +74,10 @@ class ConversionController {
       conversionService
         .processJob(job.id)
         .then(() => {
-          console.log(`Job ${job.id} completed`);
+          logger.info({ jobId: job.id }, 'Job completed');
         })
         .catch((error) => {
-          console.error(`❌ Job ${job.id} failed:`, error);
+          logger.error({ err: error, jobId: job.id }, 'Job failed');
         });
 
       res.status(201).json({
@@ -85,7 +86,7 @@ class ConversionController {
         message: 'Conversion job created and started',
       });
     } catch (error) {
-      console.error('Error in createJob:', error);
+      logger.error({ err: error }, 'Error in createJob');
       res.status(500).json({
         success: false,
         message: 'Failed to create conversion job',
@@ -106,7 +107,7 @@ class ConversionController {
         message: 'Job cancelled successfully',
       });
     } catch (error) {
-      console.error('Error in cancelJob:', error);
+      logger.error({ err: error }, 'Error in cancelJob');
       res.status(500).json({
         success: false,
         message: 'Failed to cancel job',
@@ -125,7 +126,7 @@ class ConversionController {
         data: stats,
       });
     } catch (error) {
-      console.error('Error in getStats:', error);
+      logger.error({ err: error }, 'Error in getStats');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch conversion statistics',
@@ -146,7 +147,7 @@ class ConversionController {
         message: `Cleaned up ${deletedCount} old conversion jobs`,
       });
     } catch (error) {
-      console.error('Error in cleanupJobs:', error);
+      logger.error({ err: error }, 'Error in cleanupJobs');
       res.status(500).json({
         success: false,
         message: 'Failed to cleanup jobs',
@@ -173,7 +174,7 @@ class ConversionController {
         },
       });
     } catch (error) {
-      console.error('Error in getJobProgress:', error);
+      logger.error({ err: error }, 'Error in getJobProgress');
       res.status(500).json({
         success: false,
         message: 'Failed to get job progress',
@@ -205,10 +206,10 @@ class ConversionController {
       conversionService
         .processJob(updatedJob.id)
         .then(() => {
-          console.log(`Retry job ${updatedJob.id} completed`);
+          logger.info({ jobId: updatedJob.id }, 'Retry job completed');
         })
         .catch((error) => {
-          console.error(`❌ Retry job ${updatedJob.id} failed:`, error);
+          logger.error({ err: error, jobId: updatedJob.id }, 'Retry job failed');
         });
 
       res.json({
@@ -217,7 +218,7 @@ class ConversionController {
         message: 'Job retry started',
       });
     } catch (error) {
-      console.error('Error in retryJob:', error);
+      logger.error({ err: error }, 'Error in retryJob');
       res.status(500).json({
         success: false,
         message: 'Failed to retry job',

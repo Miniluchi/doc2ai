@@ -1,5 +1,6 @@
 import { TokenExpiredError } from '../integrations/base/driveConnector.js';
 import SourceService from '../services/sourceService.js';
+import logger from '../config/logger.js';
 
 const sourceService = new SourceService();
 
@@ -13,7 +14,7 @@ class SourceController {
         data: sources,
       });
     } catch (error) {
-      console.error('Error in getAllSources:', error);
+      logger.error({ err: error }, 'Error in getAllSources');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch sources',
@@ -33,7 +34,7 @@ class SourceController {
         data: source,
       });
     } catch (error) {
-      console.error('Error in getSourceById:', error);
+      logger.error({ err: error }, 'Error in getSourceById');
 
       if (error.message === 'Source not found') {
         return res.status(404).json({
@@ -78,7 +79,7 @@ class SourceController {
         message: 'Source created successfully',
       });
     } catch (error) {
-      console.error('Error in createSource:', error);
+      logger.error({ err: error }, 'Error in createSource');
       res.status(500).json({
         success: false,
         message: 'Failed to create source',
@@ -99,7 +100,7 @@ class SourceController {
         message: 'Source updated successfully',
       });
     } catch (error) {
-      console.error('Error in updateSource:', error);
+      logger.error({ err: error }, 'Error in updateSource');
 
       if (error.message === 'Source not found') {
         return res.status(404).json({
@@ -127,7 +128,7 @@ class SourceController {
         message: 'Source deleted successfully',
       });
     } catch (error) {
-      console.error('Error in deleteSource:', error);
+      logger.error({ err: error }, 'Error in deleteSource');
       res.status(500).json({
         success: false,
         message: 'Failed to delete source',
@@ -168,7 +169,7 @@ class SourceController {
         data: result,
       });
     } catch (error) {
-      console.error('Error in testCredentials:', error);
+      logger.error({ err: error }, 'Error in testCredentials');
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
@@ -195,7 +196,7 @@ class SourceController {
         data: result,
       });
     } catch (error) {
-      console.error('Error in testConnection:', error);
+      logger.error({ err: error }, 'Error in testConnection');
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
@@ -222,7 +223,7 @@ class SourceController {
         data: result,
       });
     } catch (error) {
-      console.error('Error in syncSource:', error);
+      logger.error({ err: error }, 'Error in syncSource');
       res.status(500).json({
         success: false,
         message: 'Sync failed',
@@ -241,7 +242,7 @@ class SourceController {
         data: stats,
       });
     } catch (error) {
-      console.error('Error in getStats:', error);
+      logger.error({ err: error }, 'Error in getStats');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch statistics',
@@ -270,7 +271,7 @@ class SourceController {
         data: folders,
       });
     } catch (error) {
-      console.error('Error in getGoogleDriveFolders:', error);
+      logger.error({ err: error }, 'Error in getGoogleDriveFolders');
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
@@ -309,7 +310,7 @@ class SourceController {
         data: files,
       });
     } catch (error) {
-      console.error('Error in previewGoogleDriveFiles:', error);
+      logger.error({ err: error }, 'Error in previewGoogleDriveFiles');
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,

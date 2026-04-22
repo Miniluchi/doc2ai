@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 
 export function authenticateToken(req, res, next) {
   if (config.nodeEnv === 'development') {
-    console.log('Authentication bypassed in development mode');
+    logger.debug('Authentication bypassed in development mode');
     return next();
   }
 
@@ -23,7 +24,7 @@ export function authenticateToken(req, res, next) {
     req.user = decoded;
     next();
   } catch (error) {
-    console.error('Token verification failed:', error);
+    logger.error({ err: error }, 'Token verification failed');
 
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
@@ -55,7 +56,7 @@ export function optionalAuth(req, res, next) {
     req.user = decoded;
   } catch {
     req.user = null;
-    console.warn('Optional auth: invalid token provided');
+    logger.warn('Optional auth: invalid token provided');
   }
 
   next();
@@ -148,14 +149,16 @@ export function logAuthAttempts(req, res, next) {
   const userAgent = req.get('User-Agent');
   const ip = req.ip || req.connection.remoteAddress;
 
-  console.log('Auth attempt:', {
-    method: req.method,
-    url: req.originalUrl,
-    hasToken,
-    userAgent: userAgent?.substring(0, 50),
-    ip,
-    timestamp: new Date().toISOString(),
-  });
+  logger.info(
+    {
+      method: req.method,
+      url: req.originalUrl,
+      hasToken,
+      userAgent: userAgent?.substring(0, 50),
+      ip,
+    },
+    'Auth attempt',
+  );
 
   next();
 }
@@ -184,7 +187,7 @@ export function extractUserInfo(req, res, next) {
         ...decoded,
       };
     } catch (error) {
-      console.warn('Token extraction failed:', error.message);
+      logger.warn({ err: error }, 'Token extraction failed');
     }
   }
 

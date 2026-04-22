@@ -3,6 +3,7 @@ import { ConverterFactory } from '../converters/converterFactory.js';
 import path from 'path';
 import fs from 'fs-extra';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 import { enrichSourceWithConfig, getValidatedDestination } from '../utils/configParser.js';
 
 const prisma = getPrismaClient();
@@ -37,7 +38,7 @@ class ConversionService {
         },
       };
     } catch (error) {
-      console.error('Error fetching conversion jobs:', error);
+      logger.error({ err: error }, 'Error fetching conversion jobs');
       throw error;
     }
   }
@@ -61,7 +62,7 @@ class ConversionService {
 
       return job;
     } catch (error) {
-      console.error('Error fetching job:', error);
+      logger.error({ err: error }, 'Error fetching job');
       throw error;
     }
   }
@@ -93,10 +94,10 @@ class ConversionService {
         job.source = enrichSourceWithConfig(job.source);
       }
 
-      console.log(`Conversion job created: ${fileName}`);
+      logger.info(`Conversion job created: ${fileName}`);
       return job;
     } catch (error) {
-      console.error('Error creating job:', error);
+      logger.error({ err: error }, 'Error creating job');
       throw error;
     }
   }
@@ -127,7 +128,7 @@ class ConversionService {
 
       job.source.config = parsedConfig;
 
-      console.log(`Processing job: ${job.fileName}`);
+      logger.info(`Processing job: ${job.fileName}`);
 
       const fileExtension = path.extname(job.filePath).toLowerCase();
       const converter = ConverterFactory.getConverter(fileExtension);
@@ -165,9 +166,9 @@ class ConversionService {
 
         await fs.ensureDir(path.dirname(exportFilePath));
         await fs.copy(outputPath, exportFilePath);
-        console.log(`File exported to: ${exportFilePath}`);
+        logger.info(`File exported to: ${exportFilePath}`);
       } catch (error) {
-        console.warn(`Warning: Failed to export to configured destination:`, error.message);
+        logger.warn({ err: error }, 'Failed to export to configured destination');
       }
 
       const completedJob = await prisma.conversionJob.update({
@@ -191,10 +192,10 @@ class ConversionService {
         },
       });
 
-      console.log(`Job completed: ${job.fileName}`);
+      logger.info(`Job completed: ${job.fileName}`);
       return completedJob;
     } catch (error) {
-      console.error(`❌ Job failed: ${job?.fileName || jobId}`, error);
+      logger.error({ err: error, fileName: job?.fileName, jobId }, 'Job failed');
 
       await prisma.conversionJob
         .update({
@@ -221,10 +222,10 @@ class ConversionService {
       });
 
       if (message) {
-        console.log(`Job ${jobId}: ${progress}% - ${message}`);
+        logger.info(`Job ${jobId}: ${progress}% - ${message}`);
       }
     } catch (error) {
-      console.error('Error updating job progress:', error);
+      logger.error({ err: error }, 'Error updating job progress');
     }
   }
 
@@ -242,10 +243,10 @@ class ConversionService {
         },
       });
 
-      console.log(`Job cancelled: ${job.fileName}`);
+      logger.info(`Job cancelled: ${job.fileName}`);
       return job;
     } catch (error) {
-      console.error('Error cancelling job:', error);
+      logger.error({ err: error }, 'Error cancelling job');
       throw error;
     }
   }
@@ -275,7 +276,7 @@ class ConversionService {
         recent,
       };
     } catch (error) {
-      console.error('Error fetching job stats:', error);
+      logger.error({ err: error }, 'Error fetching job stats');
       throw error;
     }
   }
@@ -294,10 +295,10 @@ class ConversionService {
         },
       });
 
-      console.log(`Cleaned up ${result.count} old conversion jobs`);
+      logger.info(`Cleaned up ${result.count} old conversion jobs`);
       return result.count;
     } catch (error) {
-      console.error('Error cleaning up jobs:', error);
+      logger.error({ err: error }, 'Error cleaning up jobs');
       throw error;
     }
   }
