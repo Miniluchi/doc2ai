@@ -2,8 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import pinoHttp from 'pino-http';
 import { initializeDatabase, closeDatabase } from './config/database.js';
 import config from './config/env.js';
+import logger from './config/logger.js';
 import apiRoutes from './routes/index.js';
 import { errorHandler, notFoundHandler, logError } from './middleware/errorHandler.js';
 import { extractUserInfo } from './middleware/auth.js';
@@ -17,11 +19,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 async function setupApp() {
-  console.log('Starting Doc2AI Backend...');
+  logger.info('Starting Doc2AI Backend...');
 
   await fs.ensureDir(config.storagePath);
   await fs.ensureDir(config.tempPath);
-  console.log('Storage directories created');
+  logger.info('Storage directories created');
 
   app.use(
     helmet({
@@ -65,10 +67,7 @@ async function setupApp() {
   app.use(sanitizeInput);
   app.use(extractUserInfo);
 
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.originalUrl} - ${req.ip}`);
-    next();
-  });
+  app.use(pinoHttp({ logger }));
 
   app.use('/api', apiRoutes);
 
@@ -101,46 +100,48 @@ async function startServer() {
 
     const externalPort = process.env.EXTERNAL_PORT || config.port;
     const server = app.listen(config.port, () => {
-      console.log(`Doc2AI Backend running on port ${externalPort}`);
-      console.log(`Environment: ${config.nodeEnv}`);
-      console.log(`API available at: http://localhost:${externalPort}/api`);
+      logger.info(
+        { port: externalPort, env: config.nodeEnv },
+        `Doc2AI Backend running on port ${externalPort}`,
+      );
+      logger.info(`API available at: http://localhost:${externalPort}/api`);
     });
 
-    console.log('Starting queue processor...');
+    logger.info('Starting queue processor...');
     try {
       await queueService.startProcessing(3);
-      console.log('Queue processor started successfully');
+      logger.info('Queue processor started successfully');
     } catch (error) {
-      console.error('❌ Queue processor failed to start:', error.message);
+      logger.error({ err: error }, 'Queue processor failed to start');
     }
 
-    console.log('Starting monitoring service...');
+    logger.info('Starting monitoring service...');
     try {
       await monitoringService.start();
-      console.log('Monitoring service started successfully');
+      logger.info('Monitoring service started successfully');
     } catch (error) {
-      console.warn('⚠️ Monitoring service failed to start:', error.message);
+      logger.warn({ err: error }, 'Monitoring service failed to start');
     }
 
     const gracefulShutdown = async (signal) => {
-      console.log(`\nReceived ${signal}. Graceful shutdown...`);
+      logger.info({ signal }, 'Graceful shutdown...');
 
       if (monitoringService.isRunning) {
         await monitoringService.stop();
       }
 
-      console.log('Closing queue...');
+      logger.info('Closing queue...');
       await queueService.close();
 
       await closeDatabase();
 
       server.close(() => {
-        console.log('Doc2AI Backend stopped gracefully');
+        logger.info('Doc2AI Backend stopped gracefully');
         process.exit(0);
       });
 
       setTimeout(() => {
-        console.error('❌ Could not close connections in time, forcefully shutting down');
+        logger.error('Could not close connections in time, forcefully shutting down');
         process.exit(1);
       }, 10000);
     };
@@ -149,17 +150,17 @@ async function startServer() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
     process.on('unhandledRejection', (reason, promise) => {
-      console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+      logger.error({ reason, promise }, 'Unhandled Rejection');
     });
 
     process.on('uncaughtException', (error) => {
-      console.error('❌ Uncaught Exception:', error);
+      logger.error({ err: error }, 'Uncaught Exception');
       process.exit(1);
     });
 
     return server;
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 }

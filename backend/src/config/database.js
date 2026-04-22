@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import logger from './logger.js';
 
 let prisma;
 
@@ -16,16 +17,16 @@ function getPrismaClient() {
 
 export async function initializeDatabase() {
   try {
-    console.log('Initializing database...');
+    logger.info('Initializing database...');
 
     const client = getPrismaClient();
 
     await client.$connect();
-    console.log('Database connected successfully');
+    logger.info('Database connected successfully');
 
     return client;
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    logger.error({ err: error }, 'Database initialization failed');
     throw error;
   }
 }
@@ -33,7 +34,7 @@ export async function initializeDatabase() {
 export async function closeDatabase() {
   if (prisma) {
     await prisma.$disconnect();
-    console.log('Database disconnected');
+    logger.info('Database disconnected');
   }
 }
 

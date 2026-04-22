@@ -2,6 +2,7 @@ import DriveConnector from '../base/driveConnector.js';
 import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
+import logger from '../../config/logger.js';
 
 class SharePointConnector extends DriveConnector {
   constructor(config) {
@@ -206,7 +207,7 @@ class SharePointConnector extends DriveConnector {
 
         lastCheck = new Date();
       } catch (error) {
-        console.error('Error in watchForChanges polling:', error);
+        logger.error({ err: error }, 'Error in watchForChanges polling');
       }
     }, 60000);
 

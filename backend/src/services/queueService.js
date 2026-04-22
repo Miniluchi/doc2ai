@@ -1,5 +1,6 @@
 import Queue from 'bull';
 import config from '../config/env.js';
+import logger from '../config/logger.js';
 import ConversionService from './conversionService.js';
 
 class QueueService {
@@ -23,23 +24,23 @@ class QueueService {
 
   setupEventHandlers() {
     this.conversionQueue.on('completed', (job, result) => {
-      console.log(`Job ${job.id} completed: ${result.fileName}`);
+      logger.info(`Job ${job.id} completed: ${result.fileName}`);
     });
 
     this.conversionQueue.on('failed', (job, error) => {
-      console.error(`❌ Job ${job.id} failed:`, error.message);
+      logger.error({ err: error, jobId: job.id }, 'Job failed');
     });
 
     this.conversionQueue.on('active', (job) => {
-      console.log(`Processing job ${job.id}: ${job.data.fileName}`);
+      logger.info(`Processing job ${job.id}: ${job.data.fileName}`);
     });
 
     this.conversionQueue.on('progress', (job, progress) => {
-      console.log(`Job ${job.id} progress: ${progress}%`);
+      logger.info(`Job ${job.id} progress: ${progress}%`);
     });
 
     this.conversionQueue.on('error', (error) => {
-      console.error('❌ Queue error:', error);
+      logger.error({ err: error }, 'Queue error');
     });
   }
 
@@ -48,7 +49,7 @@ class QueueService {
    * @param {number} concurrency - Number of jobs to process in parallel
    */
   async startProcessing(concurrency = 3) {
-    console.log(`Starting queue processor (concurrency: ${concurrency})`);
+    logger.info(`Starting queue processor (concurrency: ${concurrency})`);
 
     this.conversionQueue.process(concurrency, async (job) => {
       const { jobId, fileName } = job.data;
@@ -65,7 +66,7 @@ class QueueService {
           outputPath: result.outputPath,
         };
       } catch (error) {
-        console.error(`❌ Error processing job ${jobId}:`, error);
+        logger.error({ err: error, jobId }, 'Error processing job');
         throw error;
       }
     });
@@ -91,10 +92,10 @@ class QueueService {
         },
       );
 
-      console.log(`Job enqueued: ${fileName} (ID: ${job.id})`);
+      logger.info(`Job enqueued: ${fileName} (ID: ${job.id})`);
       return job;
     } catch (error) {
-      console.error('❌ Error enqueuing job:', error);
+      logger.error({ err: error }, 'Error enqueuing job');
       throw error;
     }
   }
@@ -118,7 +119,7 @@ class QueueService {
         total: waiting + active + completed + failed + delayed,
       };
     } catch (error) {
-      console.error('❌ Error fetching stats:', error);
+      logger.error({ err: error }, 'Error fetching stats');
       throw error;
     }
   }
@@ -133,7 +134,7 @@ class QueueService {
         timestamp: job.timestamp,
       }));
     } catch (error) {
-      console.error('❌ Error fetching active jobs:', error);
+      logger.error({ err: error }, 'Error fetching active jobs');
       throw error;
     }
   }
@@ -147,7 +148,7 @@ class QueueService {
         timestamp: job.timestamp,
       }));
     } catch (error) {
-      console.error('❌ Error fetching waiting jobs:', error);
+      logger.error({ err: error }, 'Error fetching waiting jobs');
       throw error;
     }
   }
@@ -164,7 +165,7 @@ class QueueService {
         attemptsMade: job.attemptsMade,
       }));
     } catch (error) {
-      console.error('❌ Error fetching failed jobs:', error);
+      logger.error({ err: error }, 'Error fetching failed jobs');
       throw error;
     }
   }
@@ -173,9 +174,9 @@ class QueueService {
     try {
       await this.conversionQueue.clean(grace, 'completed');
       await this.conversionQueue.clean(grace, 'failed');
-      console.log(`Cleaned jobs older than ${grace / 1000 / 60 / 60}h`);
+      logger.info(`Cleaned jobs older than ${grace / 1000 / 60 / 60}h`);
     } catch (error) {
-      console.error('❌ Error cleaning jobs:', error);
+      logger.error({ err: error }, 'Error cleaning jobs');
       throw error;
     }
   }
@@ -183,9 +184,9 @@ class QueueService {
   async emptyQueue() {
     try {
       await this.conversionQueue.empty();
-      console.log('Queue emptied');
+      logger.info('Queue emptied');
     } catch (error) {
-      console.error('❌ Error emptying queue:', error);
+      logger.error({ err: error }, 'Error emptying queue');
       throw error;
     }
   }
@@ -193,9 +194,9 @@ class QueueService {
   async pause() {
     try {
       await this.conversionQueue.pause();
-      console.log('Queue paused');
+      logger.info('Queue paused');
     } catch (error) {
-      console.error('❌ Error pausing queue:', error);
+      logger.error({ err: error }, 'Error pausing queue');
       throw error;
     }
   }
@@ -203,9 +204,9 @@ class QueueService {
   async resume() {
     try {
       await this.conversionQueue.resume();
-      console.log('Queue resumed');
+      logger.info('Queue resumed');
     } catch (error) {
-      console.error('❌ Error resuming queue:', error);
+      logger.error({ err: error }, 'Error resuming queue');
       throw error;
     }
   }
@@ -213,9 +214,9 @@ class QueueService {
   async close() {
     try {
       await this.conversionQueue.close();
-      console.log('Queue closed');
+      logger.info('Queue closed');
     } catch (error) {
-      console.error('❌ Error closing queue:', error);
+      logger.error({ err: error }, 'Error closing queue');
       throw error;
     }
   }

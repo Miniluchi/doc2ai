@@ -1,3 +1,5 @@
+import logger from '../../config/logger.js';
+
 /**
  * Error thrown when OAuth credentials are expired or revoked.
  * Controllers should catch this to return 401 instead of 500.
@@ -66,7 +68,10 @@ class DriveConnector {
   }
 
   handleApiError(error, operation) {
-    console.error(`${this.constructor.name} ${operation} failed:`, error);
+    logger.error(
+      { err: error, connector: this.constructor.name, operation },
+      `${operation} failed`,
+    );
 
     // Detect expired/revoked OAuth tokens
     const responseData = error.response?.data;
@@ -85,7 +90,7 @@ class DriveConnector {
   }
 
   log(operation, details = {}) {
-    console.log(`[${this.constructor.name}] ${operation}:`, details);
+    logger.info({ connector: this.constructor.name, ...details }, operation);
   }
 }
 
