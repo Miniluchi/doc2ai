@@ -1,8 +1,8 @@
-import dotenv from "dotenv";
-import path from "path";
+import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
-const requiredVars = ["JWT_SECRET", "ENCRYPTION_KEY", "DATABASE_URL"];
+const requiredVars = ['JWT_SECRET', 'ENCRYPTION_KEY', 'DATABASE_URL'];
 
 for (const varName of requiredVars) {
   if (!process.env[varName]) {
@@ -13,8 +13,8 @@ for (const varName of requiredVars) {
 
 const config = {
   port: parseInt(process.env.PORT) || 3000,
-  nodeEnv: process.env.NODE_ENV || "development",
-  corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  nodeEnv: process.env.NODE_ENV || 'development',
+  corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
 
   databaseUrl: process.env.DATABASE_URL,
 
@@ -35,11 +35,11 @@ const config = {
 
   redisUrl: process.env.REDIS_URL,
 
-  storagePath: path.resolve(process.env.STORAGE_PATH || "./storage"),
-  tempPath: path.resolve(process.env.TEMP_PATH || "./temp"),
-  exportPath: path.resolve(process.env.EXPORT_PATH || "./exports"),
+  storagePath: path.resolve(process.env.STORAGE_PATH || './storage'),
+  tempPath: path.resolve(process.env.TEMP_PATH || './temp'),
+  exportPath: path.resolve(process.env.EXPORT_PATH || './exports'),
 
-  logLevel: process.env.LOG_LEVEL || "info",
+  logLevel: process.env.LOG_LEVEL || 'info',
   syncIntervalMinutes: parseInt(process.env.SYNC_INTERVAL_MINUTES) || 15,
 
   rateLimit: {
@@ -49,7 +49,7 @@ const config = {
 };
 
 if (config.encryptionKey.length !== 32) {
-  console.error("❌ ENCRYPTION_KEY must be exactly 32 characters long");
+  console.error('❌ ENCRYPTION_KEY must be exactly 32 characters long');
   process.exit(1);
 }
 

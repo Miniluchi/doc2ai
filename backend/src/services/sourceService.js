@@ -1,8 +1,8 @@
-import getPrismaClient from "../config/database.js";
-import { encryptCredentials, decryptCredentials } from "../utils/encryption.js";
-import { DriveConnectorFactory } from "../integrations/base/driveConnectorFactory.js";
-import ConversionService from "./conversionService.js";
-import config from "../config/env.js";
+import getPrismaClient from '../config/database.js';
+import { encryptCredentials, decryptCredentials } from '../utils/encryption.js';
+import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
+import ConversionService from './conversionService.js';
+import config from '../config/env.js';
 
 const prisma = getPrismaClient();
 
@@ -13,11 +13,11 @@ class SourceService {
         include: {
           jobs: {
             take: 5,
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' },
           },
           syncLogs: {
             take: 10,
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' },
           },
         },
       });
@@ -28,13 +28,13 @@ class SourceService {
           ...source,
           config: {
             ...parsedConfig,
-            credentials: parsedConfig.credentials ? "***encrypted***" : null,
+            credentials: parsedConfig.credentials ? '***encrypted***' : null,
           },
         };
       });
     } catch (error) {
-      console.error("Error fetching sources:", error);
-      throw new Error("Failed to fetch sources");
+      console.error('Error fetching sources:', error);
+      throw new Error('Failed to fetch sources');
     }
   }
 
@@ -44,16 +44,16 @@ class SourceService {
         where: { id },
         include: {
           jobs: {
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' },
           },
           syncLogs: {
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' },
           },
         },
       });
 
       if (!source) {
-        throw new Error("Source not found");
+        throw new Error('Source not found');
       }
 
       return {
@@ -61,7 +61,7 @@ class SourceService {
         config: JSON.parse(source.config),
       };
     } catch (error) {
-      console.error("Error fetching source:", error);
+      console.error('Error fetching source:', error);
       throw error;
     }
   }
@@ -76,14 +76,12 @@ class SourceService {
       const { name, platform, config } = sourceData;
 
       if (!name || !platform || !config) {
-        throw new Error("Missing required fields: name, platform, config");
+        throw new Error('Missing required fields: name, platform, config');
       }
 
       const encryptedConfig = {
         ...config,
-        credentials: config.credentials
-          ? encryptCredentials(config.credentials)
-          : null,
+        credentials: config.credentials ? encryptCredentials(config.credentials) : null,
       };
 
       const source = await prisma.source.create({
@@ -91,14 +89,14 @@ class SourceService {
           name,
           platform,
           config: JSON.stringify(encryptedConfig),
-          status: "active",
+          status: 'active',
         },
       });
 
       console.log(`Source created: ${name} (${platform})`);
       return source;
     } catch (error) {
-      console.error("Error creating source:", error);
+      console.error('Error creating source:', error);
       throw error;
     }
   }
@@ -129,7 +127,7 @@ class SourceService {
       console.log(`Source updated: ${source.name}`);
       return source;
     } catch (error) {
-      console.error("Error updating source:", error);
+      console.error('Error updating source:', error);
       throw error;
     }
   }
@@ -143,7 +141,7 @@ class SourceService {
       console.log(`Source deleted: ${id}`);
       return { success: true };
     } catch (error) {
-      console.error("Error deleting source:", error);
+      console.error('Error deleting source:', error);
       throw error;
     }
   }
@@ -159,29 +157,26 @@ class SourceService {
 
       const testConfig = {
         credentials,
-        sourcePath: sourcePath || "/",
+        sourcePath: sourcePath || '/',
         ...(siteUrl && { siteUrl }),
       };
 
-      const connector = DriveConnectorFactory.createConnector(
-        platform,
-        testConfig,
-      );
+      const connector = DriveConnectorFactory.createConnector(platform, testConfig);
 
       const result = await connector.testConnection();
 
-      console.log(`Credentials test for ${platform}: ${result.success ? "success" : "failed"}`);
+      console.log(`Credentials test for ${platform}: ${result.success ? 'success' : 'failed'}`);
 
       return result;
     } catch (error) {
-      console.error("Credentials test failed:", error);
+      console.error('Credentials test failed:', error);
 
       return {
         success: false,
-        message: error.message || "Credentials test failed",
+        message: error.message || 'Credentials test failed',
         details: {
           platform: testData.platform,
-          error: error.name || "Unknown error",
+          error: error.name || 'Unknown error',
         },
       };
     }
@@ -198,18 +193,15 @@ class SourceService {
           : null,
       };
 
-      const connector = DriveConnectorFactory.createConnector(
-        source.platform,
-        decryptedConfig,
-      );
+      const connector = DriveConnectorFactory.createConnector(source.platform, decryptedConfig);
 
       const result = await connector.testConnection();
 
       await prisma.syncLog.create({
         data: {
           sourceId: id,
-          action: "test_connection",
-          status: result.success ? "success" : "error",
+          action: 'test_connection',
+          status: result.success ? 'success' : 'error',
           message: result.message,
           details: JSON.stringify(result.details || {}),
         },
@@ -217,13 +209,13 @@ class SourceService {
 
       return result;
     } catch (error) {
-      console.error("Connection test failed:", error);
+      console.error('Connection test failed:', error);
 
       await prisma.syncLog.create({
         data: {
           sourceId: id,
-          action: "test_connection",
-          status: "error",
+          action: 'test_connection',
+          status: 'error',
           message: error.message,
           details: JSON.stringify({ error: error.stack }),
         },
@@ -236,17 +228,16 @@ class SourceService {
   async syncSource(id) {
     try {
       // Dynamic import to avoid circular dependencies
-      const monitoringService = (await import("./monitoringService.js"))
-        .default;
+      const monitoringService = (await import('./monitoringService.js')).default;
 
       await monitoringService.syncSource(id);
 
       return {
         success: true,
-        message: "Sync completed successfully",
+        message: 'Sync completed successfully',
       };
     } catch (error) {
-      console.error("Sync failed:", error);
+      console.error('Sync failed:', error);
       throw error;
     }
   }
@@ -260,7 +251,7 @@ class SourceService {
       });
 
       const activeCount = await prisma.source.count({
-        where: { status: "active" },
+        where: { status: 'active' },
       });
 
       const recentJobs = await prisma.conversionJob.count({
@@ -277,7 +268,7 @@ class SourceService {
         recentJobs,
       };
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      console.error('Error fetching stats:', error);
       throw error;
     }
   }
@@ -299,10 +290,7 @@ class SourceService {
         filters: { extensions: [], excludePatterns: [] },
       };
 
-      const connector = DriveConnectorFactory.createConnector(
-        "googledrive",
-        config,
-      );
+      const connector = DriveConnectorFactory.createConnector('googledrive', config);
       await connector.authenticate();
 
       const folders = await connector.listFolders(parentId);
@@ -312,7 +300,7 @@ class SourceService {
       console.log(`Found ${folders.length} folders`);
       return folders;
     } catch (error) {
-      console.error("Error fetching Google Drive folders:", error);
+      console.error('Error fetching Google Drive folders:', error);
       throw error;
     }
   }
@@ -331,10 +319,7 @@ class SourceService {
       let extensionsArray;
       if (Array.isArray(allowedExtensions)) {
         extensionsArray = allowedExtensions;
-      } else if (
-        typeof allowedExtensions === "object" &&
-        allowedExtensions !== null
-      ) {
+      } else if (typeof allowedExtensions === 'object' && allowedExtensions !== null) {
         extensionsArray = Object.values(allowedExtensions);
       } else {
         extensionsArray = [allowedExtensions];
@@ -347,10 +332,7 @@ class SourceService {
         filters: { extensions: extensionsArray, excludePatterns: [] },
       };
 
-      const connector = DriveConnectorFactory.createConnector(
-        "googledrive",
-        config,
-      );
+      const connector = DriveConnectorFactory.createConnector('googledrive', config);
       await connector.authenticate();
 
       const files = await connector.listFiles(folderId);
@@ -360,14 +342,12 @@ class SourceService {
           return false;
         }
         const fileName = file.name.toLowerCase();
-        const mimeType = file.mimeType || "";
+        const mimeType = file.mimeType || '';
 
         // Check for Google native docs (will be exported as DOCX/PDF)
-        const isGoogleDoc = mimeType === "application/vnd.google-apps.document";
-        const isGoogleSheet =
-          mimeType === "application/vnd.google-apps.spreadsheet";
-        const isGoogleSlide =
-          mimeType === "application/vnd.google-apps.presentation";
+        const isGoogleDoc = mimeType === 'application/vnd.google-apps.document';
+        const isGoogleSheet = mimeType === 'application/vnd.google-apps.spreadsheet';
+        const isGoogleSlide = mimeType === 'application/vnd.google-apps.presentation';
 
         if (isGoogleDoc || isGoogleSheet || isGoogleSlide) {
           return true;
@@ -375,7 +355,7 @@ class SourceService {
 
         // Check if the file matches an allowed extension
         const matches = extensionsArray.some((ext) => {
-          const extension = ext.toLowerCase().startsWith(".")
+          const extension = ext.toLowerCase().startsWith('.')
             ? ext.toLowerCase()
             : `.${ext.toLowerCase()}`;
           return fileName.endsWith(extension);
@@ -400,7 +380,7 @@ class SourceService {
         })),
       };
     } catch (error) {
-      console.error("Error previewing Google Drive files:", error);
+      console.error('Error previewing Google Drive files:', error);
       throw error;
     }
   }
@@ -420,7 +400,7 @@ class SourceService {
               originalPath: file.path || file.id,
               platform: source.platform,
             },
-            orderBy: { createdAt: "desc" },
+            orderBy: { createdAt: 'desc' },
           });
 
           if (existingFile && file.modifiedTime) {
@@ -433,17 +413,9 @@ class SourceService {
 
           console.log(`Processing file: ${file.name}`);
 
-          const tempPath = await connector.downloadFile(
-            file.id,
-            config.tempPath,
-          );
+          const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
-          const job = await conversionService.createJob(
-            source.id,
-            file.name,
-            tempPath,
-            file.size,
-          );
+          const job = await conversionService.createJob(source.id, file.name, tempPath, file.size);
 
           console.log(`Created conversion job for: ${file.name}`);
 
@@ -458,8 +430,8 @@ class SourceService {
           await prisma.syncLog.create({
             data: {
               sourceId: source.id,
-              action: "file_process",
-              status: "error",
+              action: 'file_process',
+              status: 'error',
               message: `Failed to process ${file.name}: ${error.message}`,
               details: JSON.stringify({
                 fileName: file.name,
@@ -473,7 +445,7 @@ class SourceService {
       await prisma.syncLog.update({
         where: { id: syncLogId },
         data: {
-          status: errorCount === 0 ? "success" : "partial_success",
+          status: errorCount === 0 ? 'success' : 'partial_success',
           message: `Sync completed - processed ${processedCount}/${files.length} files (${errorCount} errors)`,
           details: JSON.stringify({
             processedFiles: processedCount,
@@ -485,17 +457,16 @@ class SourceService {
         },
       });
 
-      console.log(`Processing completed for source: ${source.name} (${processedCount}/${files.length} files converted)`);
-    } catch (error) {
-      console.error(
-        `❌ Critical error during file processing for source ${source.name}:`,
-        error,
+      console.log(
+        `Processing completed for source: ${source.name} (${processedCount}/${files.length} files converted)`,
       );
+    } catch (error) {
+      console.error(`❌ Critical error during file processing for source ${source.name}:`, error);
 
       await prisma.syncLog.update({
         where: { id: syncLogId },
         data: {
-          status: "error",
+          status: 'error',
           message: `Sync failed: ${error.message}`,
           details: JSON.stringify({
             error: error.stack,

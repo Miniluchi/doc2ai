@@ -1,5 +1,5 @@
-import { TokenExpiredError } from "../integrations/base/driveConnector.js";
-import SourceService from "../services/sourceService.js";
+import { TokenExpiredError } from '../integrations/base/driveConnector.js';
+import SourceService from '../services/sourceService.js';
 
 const sourceService = new SourceService();
 
@@ -13,10 +13,10 @@ class SourceController {
         data: sources,
       });
     } catch (error) {
-      console.error("Error in getAllSources:", error);
+      console.error('Error in getAllSources:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to fetch sources",
+        message: 'Failed to fetch sources',
         error: error.message,
       });
     }
@@ -33,18 +33,18 @@ class SourceController {
         data: source,
       });
     } catch (error) {
-      console.error("Error in getSourceById:", error);
+      console.error('Error in getSourceById:', error);
 
-      if (error.message === "Source not found") {
+      if (error.message === 'Source not found') {
         return res.status(404).json({
           success: false,
-          message: "Source not found",
+          message: 'Source not found',
         });
       }
 
       res.status(500).json({
         success: false,
-        message: "Failed to fetch source",
+        message: 'Failed to fetch source',
         error: error.message,
       });
     }
@@ -58,15 +58,15 @@ class SourceController {
       if (!name || !platform || !config) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: name, platform, config",
+          message: 'Missing required fields: name, platform, config',
         });
       }
 
-      const supportedPlatforms = ["sharepoint", "googledrive", "onedrive"];
+      const supportedPlatforms = ['sharepoint', 'googledrive', 'onedrive'];
       if (!supportedPlatforms.includes(platform)) {
         return res.status(400).json({
           success: false,
-          message: `Unsupported platform. Supported: ${supportedPlatforms.join(", ")}`,
+          message: `Unsupported platform. Supported: ${supportedPlatforms.join(', ')}`,
         });
       }
 
@@ -75,13 +75,13 @@ class SourceController {
       res.status(201).json({
         success: true,
         data: source,
-        message: "Source created successfully",
+        message: 'Source created successfully',
       });
     } catch (error) {
-      console.error("Error in createSource:", error);
+      console.error('Error in createSource:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to create source",
+        message: 'Failed to create source',
         error: error.message,
       });
     }
@@ -96,21 +96,21 @@ class SourceController {
       res.json({
         success: true,
         data: source,
-        message: "Source updated successfully",
+        message: 'Source updated successfully',
       });
     } catch (error) {
-      console.error("Error in updateSource:", error);
+      console.error('Error in updateSource:', error);
 
-      if (error.message === "Source not found") {
+      if (error.message === 'Source not found') {
         return res.status(404).json({
           success: false,
-          message: "Source not found",
+          message: 'Source not found',
         });
       }
 
       res.status(500).json({
         success: false,
-        message: "Failed to update source",
+        message: 'Failed to update source',
         error: error.message,
       });
     }
@@ -124,13 +124,13 @@ class SourceController {
 
       res.json({
         success: true,
-        message: "Source deleted successfully",
+        message: 'Source deleted successfully',
       });
     } catch (error) {
-      console.error("Error in deleteSource:", error);
+      console.error('Error in deleteSource:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to delete source",
+        message: 'Failed to delete source',
         error: error.message,
       });
     }
@@ -144,22 +144,22 @@ class SourceController {
       if (!platform || !credentials) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: platform, credentials",
+          message: 'Missing required fields: platform, credentials',
         });
       }
 
-      const supportedPlatforms = ["sharepoint", "googledrive", "onedrive"];
+      const supportedPlatforms = ['sharepoint', 'googledrive', 'onedrive'];
       if (!supportedPlatforms.includes(platform)) {
         return res.status(400).json({
           success: false,
-          message: `Unsupported platform. Supported: ${supportedPlatforms.join(", ")}`,
+          message: `Unsupported platform. Supported: ${supportedPlatforms.join(', ')}`,
         });
       }
 
       const result = await sourceService.testCredentials({
         platform,
         credentials,
-        sourcePath: sourcePath || "/",
+        sourcePath: sourcePath || '/',
         ...(siteUrl && { siteUrl }),
       });
 
@@ -168,17 +168,17 @@ class SourceController {
         data: result,
       });
     } catch (error) {
-      console.error("Error in testCredentials:", error);
+      console.error('Error in testCredentials:', error);
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
-          code: "TOKEN_EXPIRED",
-          message: "Your Google session has expired, please reconnect",
+          code: 'TOKEN_EXPIRED',
+          message: 'Your Google session has expired, please reconnect',
         });
       }
       res.status(500).json({
         success: false,
-        message: "Credentials test failed",
+        message: 'Credentials test failed',
         error: error.message,
       });
     }
@@ -195,17 +195,17 @@ class SourceController {
         data: result,
       });
     } catch (error) {
-      console.error("Error in testConnection:", error);
+      console.error('Error in testConnection:', error);
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
-          code: "TOKEN_EXPIRED",
-          message: "Your Google session has expired, please reconnect",
+          code: 'TOKEN_EXPIRED',
+          message: 'Your Google session has expired, please reconnect',
         });
       }
       res.status(500).json({
         success: false,
-        message: "Connection test failed",
+        message: 'Connection test failed',
         error: error.message,
       });
     }
@@ -222,10 +222,10 @@ class SourceController {
         data: result,
       });
     } catch (error) {
-      console.error("Error in syncSource:", error);
+      console.error('Error in syncSource:', error);
       res.status(500).json({
         success: false,
-        message: "Sync failed",
+        message: 'Sync failed',
         error: error.message,
       });
     }
@@ -241,10 +241,10 @@ class SourceController {
         data: stats,
       });
     } catch (error) {
-      console.error("Error in getStats:", error);
+      console.error('Error in getStats:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to fetch statistics",
+        message: 'Failed to fetch statistics',
         error: error.message,
       });
     }
@@ -253,37 +253,34 @@ class SourceController {
   // GET /api/sources/google-drive/folders?parent_id=xxx&credentials=xxx
   async getGoogleDriveFolders(req, res) {
     try {
-      const { parent_id = "root" } = req.query;
+      const { parent_id = 'root' } = req.query;
       const { credentials } = req.body;
 
       if (!credentials) {
         return res.status(400).json({
           success: false,
-          message: "Missing Google Drive credentials",
+          message: 'Missing Google Drive credentials',
         });
       }
 
-      const folders = await sourceService.getGoogleDriveFolders(
-        parent_id,
-        credentials,
-      );
+      const folders = await sourceService.getGoogleDriveFolders(parent_id, credentials);
 
       res.json({
         success: true,
         data: folders,
       });
     } catch (error) {
-      console.error("Error in getGoogleDriveFolders:", error);
+      console.error('Error in getGoogleDriveFolders:', error);
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
-          code: "TOKEN_EXPIRED",
-          message: "Your Google session has expired, please reconnect",
+          code: 'TOKEN_EXPIRED',
+          message: 'Your Google session has expired, please reconnect',
         });
       }
       res.status(500).json({
         success: false,
-        message: "Failed to fetch Google Drive folders",
+        message: 'Failed to fetch Google Drive folders',
         error: error.message,
       });
     }
@@ -293,40 +290,36 @@ class SourceController {
   async previewGoogleDriveFiles(req, res) {
     try {
       const {
-        folder_id = "root",
+        folder_id = 'root',
         credentials,
-        extensions = [".docx", ".pdf", ".doc", ".txt"],
+        extensions = ['.docx', '.pdf', '.doc', '.txt'],
       } = req.body;
 
       if (!credentials) {
         return res.status(400).json({
           success: false,
-          message: "Missing Google Drive credentials",
+          message: 'Missing Google Drive credentials',
         });
       }
 
-      const files = await sourceService.previewGoogleDriveFiles(
-        folder_id,
-        credentials,
-        extensions,
-      );
+      const files = await sourceService.previewGoogleDriveFiles(folder_id, credentials, extensions);
 
       res.json({
         success: true,
         data: files,
       });
     } catch (error) {
-      console.error("Error in previewGoogleDriveFiles:", error);
+      console.error('Error in previewGoogleDriveFiles:', error);
       if (error instanceof TokenExpiredError) {
         return res.status(401).json({
           success: false,
-          code: "TOKEN_EXPIRED",
-          message: "Your Google session has expired, please reconnect",
+          code: 'TOKEN_EXPIRED',
+          message: 'Your Google session has expired, please reconnect',
         });
       }
       res.status(500).json({
         success: false,
-        message: "Failed to preview Google Drive files",
+        message: 'Failed to preview Google Drive files',
         error: error.message,
       });
     }

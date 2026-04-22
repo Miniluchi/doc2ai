@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -15,29 +15,29 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckCircle, FileText, FolderOpen, Loader2, Plus } from "lucide-react";
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import GoogleDriveIconUrl from "../../assets/GoogleDrive.svg";
-import OneDriveIconUrl from "../../assets/OneDrive.svg";
-import SharePointIconUrl from "../../assets/Sharepoint.svg";
-import { useGoogleAuth } from "../../hooks/useGoogleAuth";
-import { useSources } from "../../hooks/useSources";
-import type { CreateSourceRequest } from "../../types/api";
-import { GoogleAuthButton } from "../auth/GoogleAuthButton";
-import FilePreview from "./FilePreview";
-import GoogleDriveFolderPicker from "./GoogleDriveFolderPicker";
+} from '@/components/ui/select';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { CheckCircle, FileText, FolderOpen, Loader2, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import GoogleDriveIconUrl from '../../assets/GoogleDrive.svg';
+import OneDriveIconUrl from '../../assets/OneDrive.svg';
+import SharePointIconUrl from '../../assets/Sharepoint.svg';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { useSources } from '../../hooks/useSources';
+import type { CreateSourceRequest } from '../../types/api';
+import { GoogleAuthButton } from '../auth/GoogleAuthButton';
+import FilePreview from './FilePreview';
+import GoogleDriveFolderPicker from './GoogleDriveFolderPicker';
 
 const GoogleDriveIcon = ({ className }: { className?: string }) => (
   <img src={GoogleDriveIconUrl} className={className} alt="Google Drive" />
@@ -52,30 +52,24 @@ const SharePointIcon = ({ className }: { className?: string }) => (
 );
 
 const sourceFormSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Give your source a name")
-    .max(100, "Name is too long"),
-  platform: z.enum(["sharepoint", "googledrive", "onedrive"], {
-    message: "Choose your platform",
+  name: z.string().min(1, 'Give your source a name').max(100, 'Name is too long'),
+  platform: z.enum(['sharepoint', 'googledrive', 'onedrive'], {
+    message: 'Choose your platform',
   }),
-  sourcePath: z.string().min(1, "Specify the folder to monitor"),
-  siteUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  sourcePath: z.string().min(1, 'Specify the folder to monitor'),
+  siteUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
   destination: z
     .string()
-    .min(1, "Where do you want to save your files?")
-    .max(200, "Destination path is too long (max 200 characters)")
+    .min(1, 'Where do you want to save your files?')
+    .max(200, 'Destination path is too long (max 200 characters)')
     .regex(
       /^[a-zA-Z0-9/_-]+$/,
-      "Path can only contain letters, numbers, dashes, underscores, and slashes",
+      'Path can only contain letters, numbers, dashes, underscores, and slashes',
     )
+    .refine((val) => !val.includes('..'), "Path cannot contain '..' (security)")
     .refine(
-      (val) => !val.includes(".."),
-      "Path cannot contain '..' (security)",
-    )
-    .refine(
-      (val) => !val.startsWith("/") && !val.startsWith("\\"),
-      "Path must be relative (cannot start with / or \\)",
+      (val) => !val.startsWith('/') && !val.startsWith('\\'),
+      'Path must be relative (cannot start with / or \\)',
     ),
   extensions: z.string().optional(),
   excludePatterns: z.string().optional(),
@@ -88,10 +82,7 @@ interface AddSourceDialogProps {
   onSourceAdded?: () => void;
 }
 
-export function AddSourceDialog({
-  children,
-  onSourceAdded,
-}: AddSourceDialogProps) {
+export function AddSourceDialog({ children, onSourceAdded }: AddSourceDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
@@ -107,37 +98,33 @@ export function AddSourceDialog({
   const form = useForm<SourceFormData>({
     resolver: zodResolver(sourceFormSchema),
     defaultValues: {
-      name: "",
+      name: '',
       platform: undefined,
-      sourcePath: "/",
-      siteUrl: "",
-      destination: "",
-      extensions: ".docx,.pdf,.doc,.txt",
-      excludePatterns: "temp,~$,draft",
+      sourcePath: '/',
+      siteUrl: '',
+      destination: '',
+      extensions: '.docx,.pdf,.doc,.txt',
+      excludePatterns: 'temp,~$,draft',
     },
   });
 
-  const selectedPlatform = form.watch("platform");
+  const selectedPlatform = form.watch('platform');
 
   React.useEffect(() => {
-    if (selectedPlatform !== "googledrive") {
+    if (selectedPlatform !== 'googledrive') {
       setSelectedFolder(null);
     }
   }, [selectedPlatform]);
 
-  const handleFolderSelect = (folder: {
-    id: string;
-    name: string;
-    path: string;
-  }) => {
+  const handleFolderSelect = (folder: { id: string; name: string; path: string }) => {
     setSelectedFolder(folder);
-    form.setValue("sourcePath", folder.id);
+    form.setValue('sourcePath', folder.id);
     setShowFolderPicker(false);
   };
 
   const openFolderPicker = () => {
     if (!googleUser?.refreshToken) {
-      alert("Please connect with Google first");
+      alert('Please connect with Google first');
       return;
     }
     setShowFolderPicker(true);
@@ -147,13 +134,13 @@ export function AddSourceDialog({
     try {
       setIsSubmitting(true);
 
-      if (data.platform === "googledrive" && !googleUser?.refreshToken) {
-        alert("Please connect with Google first");
+      if (data.platform === 'googledrive' && !googleUser?.refreshToken) {
+        alert('Please connect with Google first');
         return;
       }
 
       let credentials: any = {};
-      if (data.platform === "googledrive") {
+      if (data.platform === 'googledrive') {
         credentials = {
           clientId: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_ID,
           clientSecret: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
@@ -170,13 +157,13 @@ export function AddSourceDialog({
       const destination = data.destination.trim();
 
       const extensions = data.extensions
-        ?.split(",")
+        ?.split(',')
         .map((e) => e.trim())
-        .filter((e) => e.length > 0) || [".docx", ".pdf", ".doc"];
+        .filter((e) => e.length > 0) || ['.docx', '.pdf', '.doc'];
 
       const excludePatterns =
         data.excludePatterns
-          ?.split(",")
+          ?.split(',')
           .map((p) => p.trim())
           .filter((p) => p.length > 0) || [];
 
@@ -186,8 +173,7 @@ export function AddSourceDialog({
         config: {
           credentials,
           sourcePath: data.sourcePath,
-          ...(data.platform === "sharepoint" &&
-            data.siteUrl && { siteUrl: data.siteUrl }),
+          ...(data.platform === 'sharepoint' && data.siteUrl && { siteUrl: data.siteUrl }),
           destination,
           filters: {
             extensions,
@@ -203,10 +189,9 @@ export function AddSourceDialog({
       setSelectedFolder(null);
       onSourceAdded?.();
     } catch (error) {
-      console.error("Error creating source:", error);
-      form.setError("platform", {
-        message:
-          error instanceof Error ? error.message : "Error creating source",
+      console.error('Error creating source:', error);
+      form.setError('platform', {
+        message: error instanceof Error ? error.message : 'Error creating source',
       });
     } finally {
       setIsSubmitting(false);
@@ -215,14 +200,14 @@ export function AddSourceDialog({
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
-      case "googledrive":
+      case 'googledrive':
         return <GoogleDriveIcon className="w-5 h-5" />;
-      case "sharepoint":
+      case 'sharepoint':
         return <SharePointIcon className="w-5 h-5" />;
-      case "onedrive":
+      case 'onedrive':
         return <OneDriveIcon className="w-5 h-5" />;
       default:
-        return "📁";
+        return '📁';
     }
   };
 
@@ -236,8 +221,7 @@ export function AddSourceDialog({
             Add a document source
           </DialogTitle>
           <DialogDescription>
-            Connect your storage platform to automatically convert your
-            documents to Markdown
+            Connect your storage platform to automatically convert your documents to Markdown
           </DialogDescription>
         </DialogHeader>
 
@@ -259,10 +243,7 @@ export function AddSourceDialog({
                   render={({ field }) => (
                     <FormItem className="">
                       <FormLabel>Storage platform</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Where are your documents stored?" />
@@ -271,8 +252,7 @@ export function AddSourceDialog({
                         <SelectContent>
                           <SelectItem value="googledrive">
                             <span className="flex items-center gap-2">
-                              <GoogleDriveIcon className="w-4 h-4" /> Google
-                              Drive
+                              <GoogleDriveIcon className="w-4 h-4" /> Google Drive
                             </span>
                           </SelectItem>
                           <SelectItem value="sharepoint">
@@ -305,10 +285,7 @@ export function AddSourceDialog({
                     <FormItem className="flex-1">
                       <FormLabel>Source name</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g. Team Documents, User Guides..."
-                          {...field}
-                        />
+                        <Input placeholder="e.g. Team Documents, User Guides..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -326,15 +303,15 @@ export function AddSourceDialog({
                   </div>
                   <h3 className="text-lg font-medium flex items-center gap-2">
                     Connect to {getPlatformIcon(selectedPlatform)}
-                    {selectedPlatform === "googledrive"
-                      ? "Google Drive"
-                      : selectedPlatform === "sharepoint"
-                        ? "SharePoint"
-                        : "OneDrive"}
+                    {selectedPlatform === 'googledrive'
+                      ? 'Google Drive'
+                      : selectedPlatform === 'sharepoint'
+                        ? 'SharePoint'
+                        : 'OneDrive'}
                   </h3>
                 </div>
 
-                {selectedPlatform === "googledrive" ? (
+                {selectedPlatform === 'googledrive' ? (
                   <GoogleAuthButton />
                 ) : (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -345,8 +322,7 @@ export function AddSourceDialog({
                       </span>
                     </div>
                     <p className="text-sm text-blue-700">
-                      Microsoft authentication is already configured in
-                      the application
+                      Microsoft authentication is already configured in the application
                     </p>
                   </div>
                 )}
@@ -360,210 +336,181 @@ export function AddSourceDialog({
             )}
 
             {/* 3. Folder configuration */}
-            {selectedPlatform &&
-              (googleUser?.email || selectedPlatform !== "googledrive") && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-sm font-semibold">
-                      3
-                    </div>
-                    <h3 className="text-lg font-medium">
-                      Folder configuration
-                    </h3>
+            {selectedPlatform && (googleUser?.email || selectedPlatform !== 'googledrive') && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-center w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-sm font-semibold">
+                    3
                   </div>
+                  <h3 className="text-lg font-medium">Folder configuration</h3>
+                </div>
 
+                <FormField
+                  control={form.control}
+                  name="sourcePath"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <FolderOpen className="h-4 w-4" />
+                        Folder to monitor
+                      </FormLabel>
+                      <FormControl>
+                        {selectedPlatform === 'googledrive' ? (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder={
+                                  selectedFolder ? selectedFolder.name : 'Click to choose a folder'
+                                }
+                                value={selectedFolder ? selectedFolder.name : ''}
+                                readOnly
+                                onClick={openFolderPicker}
+                                className="cursor-pointer"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={openFolderPicker}
+                                disabled={!googleUser?.refreshToken}
+                              >
+                                <FolderOpen className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {selectedFolder && (
+                              <p className="text-sm text-muted-foreground">
+                                Path: {selectedFolder.path || '/'}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <Input placeholder="/ (for entire drive)" {...field} />
+                        )}
+                      </FormControl>
+                      <FormDescription>
+                        {selectedPlatform === 'googledrive'
+                          ? 'Choose the folder to monitor in your Google Drive'
+                          : 'The folder whose documents you want to convert. "/" to monitor the entire drive.'}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedPlatform === 'sharepoint' && (
                   <FormField
                     control={form.control}
-                    name="sourcePath"
+                    name="siteUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <FolderOpen className="h-4 w-4" />
-                          Folder to monitor
-                        </FormLabel>
+                        <FormLabel>SharePoint site URL</FormLabel>
                         <FormControl>
-                          {selectedPlatform === "googledrive" ? (
-                            <div className="space-y-2">
-                              <div className="flex gap-2">
-                                <Input
-                                  placeholder={
-                                    selectedFolder
-                                      ? selectedFolder.name
-                                      : "Click to choose a folder"
-                                  }
-                                  value={
-                                    selectedFolder ? selectedFolder.name : ""
-                                  }
-                                  readOnly
-                                  onClick={openFolderPicker}
-                                  className="cursor-pointer"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={openFolderPicker}
-                                  disabled={!googleUser?.refreshToken}
-                                >
-                                  <FolderOpen className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              {selectedFolder && (
-                                <p className="text-sm text-muted-foreground">
-                                  Path: {selectedFolder.path || "/"}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <Input
-                              placeholder="/ (for entire drive)"
-                              {...field}
-                            />
-                          )}
+                          <Input
+                            placeholder="https://mycompany.sharepoint.com/sites/documents"
+                            {...field}
+                          />
                         </FormControl>
-                        <FormDescription>
-                          {selectedPlatform === "googledrive"
-                            ? "Choose the folder to monitor in your Google Drive"
-                            : 'The folder whose documents you want to convert. "/" to monitor the entire drive.'}
-                        </FormDescription>
+                        <FormDescription>The full URL of your SharePoint site</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                )}
 
-                  {selectedPlatform === "sharepoint" && (
-                    <FormField
-                      control={form.control}
-                      name="siteUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SharePoint site URL</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="https://mycompany.sharepoint.com/sites/documents"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            The full URL of your SharePoint site
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                <FormField
+                  control={form.control}
+                  name="destination"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Where to save converted files</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center">
+                          <div className="px-3 py-2 bg-muted border border-r-0 rounded-l-md text-sm text-muted-foreground font-mono">
+                            {import.meta.env.VITE_EXPORT_PATH || './exports'}/
+                          </div>
+                          <Input
+                            placeholder="doc2ai-exports"
+                            {...field}
+                            className="rounded-l-none border-l-0"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Relative folder within your EXPORT_PATH for converted files. Example:
+                        "doc2ai-exports"
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedPlatform === 'googledrive' &&
+                  selectedFolder &&
+                  googleUser?.refreshToken && (
+                    <FilePreview
+                      folderId={selectedFolder.id}
+                      folderName={selectedFolder.name}
+                      credentials={{
+                        clientId: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_ID,
+                        clientSecret: import.meta.env.VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
+                        refreshToken: googleUser.refreshToken,
+                      }}
+                      extensions={
+                        form
+                          .watch('extensions')
+                          ?.split(',')
+                          .map((e) => e.trim())
+                          .filter((e) => e.length > 0) || ['.docx', '.pdf', '.doc', '.txt']
+                      }
                     />
                   )}
+              </div>
+            )}
 
+            {/* 4. Advanced filters (optional) */}
+            {selectedPlatform && (googleUser?.email || selectedPlatform !== 'googledrive') && (
+              <details className="space-y-4">
+                <summary className="flex items-center gap-2 cursor-pointer">
+                  <div className="flex items-center justify-center w-6 h-6 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold">
+                    4
+                  </div>
+                  <h3 className="text-lg font-medium">Advanced filters (optional)</h3>
+                </summary>
+
+                <div className="ml-8 space-y-4">
                   <FormField
                     control={form.control}
-                    name="destination"
+                    name="extensions"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          Where to save converted files
-                        </FormLabel>
+                        <FormLabel>File types to process</FormLabel>
                         <FormControl>
-                          <div className="flex items-center">
-                            <div className="px-3 py-2 bg-muted border border-r-0 rounded-l-md text-sm text-muted-foreground font-mono">
-                              {import.meta.env.VITE_EXPORT_PATH || "./exports"}/
-                            </div>
-                            <Input
-                              placeholder="doc2ai-exports"
-                              {...field}
-                              className="rounded-l-none border-l-0"
-                            />
-                          </div>
+                          <Input placeholder=".docx,.pdf,.doc,.txt" {...field} />
                         </FormControl>
-                        <FormDescription>
-                          Relative folder within your EXPORT_PATH for converted
-                          files. Example: "doc2ai-exports"
-                        </FormDescription>
+                        <FormDescription>File extensions (comma-separated)</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  {selectedPlatform === "googledrive" &&
-                    selectedFolder &&
-                    googleUser?.refreshToken && (
-                      <FilePreview
-                        folderId={selectedFolder.id}
-                        folderName={selectedFolder.name}
-                        credentials={{
-                          clientId: import.meta.env
-                            .VITE_DEFAULT_GOOGLE_CLIENT_ID,
-                          clientSecret: import.meta.env
-                            .VITE_DEFAULT_GOOGLE_CLIENT_SECRET,
-                          refreshToken: googleUser.refreshToken,
-                        }}
-                        extensions={
-                          form
-                            .watch("extensions")
-                            ?.split(",")
-                            .map((e) => e.trim())
-                            .filter((e) => e.length > 0) || [
-                            ".docx",
-                            ".pdf",
-                            ".doc",
-                            ".txt",
-                          ]
-                        }
-                      />
+                  <FormField
+                    control={form.control}
+                    name="excludePatterns"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Files to ignore</FormLabel>
+                        <FormControl>
+                          <Input placeholder="temp,draft,~$" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Words in file names to exclude (comma-separated)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
                 </div>
-              )}
-
-            {/* 4. Advanced filters (optional) */}
-            {selectedPlatform &&
-              (googleUser?.email || selectedPlatform !== "googledrive") && (
-                <details className="space-y-4">
-                  <summary className="flex items-center gap-2 cursor-pointer">
-                    <div className="flex items-center justify-center w-6 h-6 bg-gray-100 text-gray-600 rounded-full text-sm font-semibold">
-                      4
-                    </div>
-                    <h3 className="text-lg font-medium">
-                      Advanced filters (optional)
-                    </h3>
-                  </summary>
-
-                  <div className="ml-8 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="extensions"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>File types to process</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder=".docx,.pdf,.doc,.txt"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            File extensions (comma-separated)
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="excludePatterns"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Files to ignore</FormLabel>
-                          <FormControl>
-                            <Input placeholder="temp,draft,~$" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            Words in file names to exclude (comma-separated)
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </details>
-              )}
+              </details>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-3 pt-4">
@@ -578,8 +525,7 @@ export function AddSourceDialog({
               <Button
                 type="submit"
                 disabled={
-                  isSubmitting ||
-                  (selectedPlatform === "googledrive" && !googleUser?.email)
+                  isSubmitting || (selectedPlatform === 'googledrive' && !googleUser?.email)
                 }
                 className="flex-1"
               >
@@ -599,7 +545,7 @@ export function AddSourceDialog({
           </form>
         </Form>
 
-        {selectedPlatform === "googledrive" && googleUser?.refreshToken && (
+        {selectedPlatform === 'googledrive' && googleUser?.refreshToken && (
           <GoogleDriveFolderPicker
             isOpen={showFolderPicker}
             onClose={() => setShowFolderPicker(false)}

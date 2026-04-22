@@ -1,9 +1,9 @@
 export interface Source {
   id: string;
   name: string;
-  platform: "sharepoint" | "googledrive" | "onedrive";
+  platform: 'sharepoint' | 'googledrive' | 'onedrive';
   config: SourceConfig;
-  status: "active" | "inactive" | "error";
+  status: 'active' | 'inactive' | 'error';
   lastSync?: string;
   createdAt: string;
   updatedAt: string;
@@ -24,7 +24,7 @@ export interface SourceConfig {
 
 export interface CreateSourceRequest {
   name: string;
-  platform: "sharepoint" | "googledrive" | "onedrive";
+  platform: 'sharepoint' | 'googledrive' | 'onedrive';
   config: {
     credentials: SharePointCredentials | GoogleDriveCredentials;
     sourcePath: string;
@@ -56,7 +56,7 @@ export interface ConversionJob {
   filePath: string;
   outputPath?: string;
   fileSize?: number;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number;
   error?: string;
   startedAt?: string;
@@ -73,7 +73,7 @@ export interface SyncLog {
   id: string;
   sourceId: string;
   action: string;
-  status: "success" | "error" | "warning";
+  status: 'success' | 'error' | 'warning';
   message: string;
   details?: Record<string, any>;
   createdAt: string;

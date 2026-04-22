@@ -7,24 +7,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { format } from "date-fns";
+} from '@/components/ui/dropdown-menu';
+import { format } from 'date-fns';
 import {
   Calendar,
   CheckCircle,
@@ -37,10 +31,10 @@ import {
   TestTube,
   Trash2,
   XCircle,
-} from "lucide-react";
-import { useState } from "react";
-import { useSources } from "../../hooks/useSources";
-import type { Source } from "../../types/api";
+} from 'lucide-react';
+import { useState } from 'react';
+import { useSources } from '../../hooks/useSources';
+import type { Source } from '../../types/api';
 
 interface SourceCardProps {
   source: Source;
@@ -68,7 +62,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
     } catch (error) {
       setConnectionResult({
         success: false,
-        message: error instanceof Error ? error.message : "Test error",
+        message: error instanceof Error ? error.message : 'Test error',
       });
     } finally {
       setIsTestingConnection(false);
@@ -81,7 +75,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
       await syncSource(source.id);
       onSync?.(source.id);
     } catch (error) {
-      console.error("Sync failed:", error);
+      console.error('Sync failed:', error);
     } finally {
       setIsSyncing(false);
     }
@@ -93,17 +87,17 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
       setShowDeleteDialog(false);
       onDelete?.(source.id);
     } catch (error) {
-      console.error("Delete failed:", error);
+      console.error('Delete failed:', error);
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case 'active':
         return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-      case "inactive":
+      case 'inactive':
         return <Badge variant="secondary">Inactive</Badge>;
-      case "error":
+      case 'error':
         return <Badge variant="destructive">Error</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -116,24 +110,24 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
 
   const getPlatformLabel = (platform: string) => {
     switch (platform) {
-      case "sharepoint":
-        return "Microsoft SharePoint";
-      case "onedrive":
-        return "Microsoft OneDrive";
-      case "googledrive":
-        return "Google Drive";
+      case 'sharepoint':
+        return 'Microsoft SharePoint';
+      case 'onedrive':
+        return 'Microsoft OneDrive';
+      case 'googledrive':
+        return 'Google Drive';
       default:
         return platform;
     }
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Never";
+    if (!dateString) return 'Never';
     try {
       const date = new Date(dateString);
-      return format(date, "PPp");
+      return format(date, 'PPp');
     } catch {
-      return "Invalid date";
+      return 'Invalid date';
     }
   };
 
@@ -146,9 +140,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
               {getPlatformIcon(source.platform)}
               <div>
                 <CardTitle className="text-lg">{source.name}</CardTitle>
-                <CardDescription>
-                  {getPlatformLabel(source.platform)}
-                </CardDescription>
+                <CardDescription>{getPlatformLabel(source.platform)}</CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -160,10 +152,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={handleTestConnection}
-                    disabled={isTestingConnection}
-                  >
+                  <DropdownMenuItem onClick={handleTestConnection} disabled={isTestingConnection}>
                     {isTestingConnection ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -202,8 +191,8 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
             <div
               className={`p-3 rounded-lg border text-sm ${
                 connectionResult.success
-                  ? "bg-green-50 border-green-200 text-green-800"
-                  : "bg-red-50 border-red-200 text-red-800"
+                  ? 'bg-green-50 border-green-200 text-green-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -213,9 +202,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                   <XCircle className="h-4 w-4" />
                 )}
                 <span className="font-medium">
-                  {connectionResult.success
-                    ? "Connection OK"
-                    : "Connection failed"}
+                  {connectionResult.success ? 'Connection OK' : 'Connection failed'}
                 </span>
               </div>
               <p className="mt-1">{connectionResult.message}</p>
@@ -228,9 +215,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                 <FolderOpen className="h-4 w-4" />
                 <span>Source path:</span>
               </div>
-              <code className="bg-muted px-2 py-1 rounded text-xs">
-                {source.config.sourcePath}
-              </code>
+              <code className="bg-muted px-2 py-1 rounded text-xs">{source.config.sourcePath}</code>
             </div>
 
             {source.config.destination && (
@@ -254,40 +239,33 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
             </div>
           </div>
 
-          {source.config.filters?.extensions && (() => {
-            const exts = Array.isArray(source.config.filters.extensions)
-              ? source.config.filters.extensions
-              : Object.values(source.config.filters.extensions);
-            return exts.length > 0 ? (
-              <div>
-                <span className="text-xs text-muted-foreground">
-                  Extensions:
-                </span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {exts.map((ext, index) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="text-xs"
-                    >
-                      {ext as string}
-                    </Badge>
-                  ))}
+          {source.config.filters?.extensions &&
+            (() => {
+              const exts = Array.isArray(source.config.filters.extensions)
+                ? source.config.filters.extensions
+                : Object.values(source.config.filters.extensions);
+              return exts.length > 0 ? (
+                <div>
+                  <span className="text-xs text-muted-foreground">Extensions:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {exts.map((ext, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {ext as string}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null;
-          })()}
+              ) : null;
+            })()}
 
           {source.jobs && source.jobs.length > 0 && (
             <div>
-              <span className="text-xs text-muted-foreground">
-                Recent jobs:
-              </span>
+              <span className="text-xs text-muted-foreground">Recent jobs:</span>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-xs">
-                  {source.jobs.length} job{source.jobs.length > 1 ? "s" : ""}
+                  {source.jobs.length} job{source.jobs.length > 1 ? 's' : ''}
                 </Badge>
-                {source.jobs.some((job) => job.status === "failed") && (
+                {source.jobs.some((job) => job.status === 'failed') && (
                   <Badge variant="destructive" className="text-xs">
                     Errors
                   </Badge>
@@ -303,17 +281,13 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete source?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action is irreversible. All data associated with the
-              source "{source.name}" will be deleted, including conversion
-              history.
+              This action is irreversible. All data associated with the source "{source.name}" will
+              be deleted, including conversion history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

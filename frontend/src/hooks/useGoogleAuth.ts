@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { GOOGLE_TOKEN_EXPIRED_EVENT } from "../services/api";
-import { TokenStorage } from "../services/tokenStorage";
+import { useCallback, useEffect, useState } from 'react';
+import { GOOGLE_TOKEN_EXPIRED_EVENT } from '../services/api';
+import { TokenStorage } from '../services/tokenStorage';
 
 interface GoogleUser {
   email: string;
@@ -36,7 +36,7 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
           return;
         }
 
-        const authData = localStorage.getItem("google_auth_data");
+        const authData = localStorage.getItem('google_auth_data');
         if (authData) {
           const parsedData = JSON.parse(authData);
           const userCredentials = {
@@ -48,20 +48,20 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
 
           setUser(userCredentials);
           TokenStorage.saveCredentials(userCredentials);
-          localStorage.removeItem("google_auth_data");
+          localStorage.removeItem('google_auth_data');
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        const authError = urlParams.get("auth_error");
+        const authError = urlParams.get('auth_error');
         if (authError) {
           setError(authError);
 
           const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete("auth_error");
-          window.history.replaceState({}, "", newUrl.toString());
+          newUrl.searchParams.delete('auth_error');
+          window.history.replaceState({}, '', newUrl.toString());
         }
       } catch (err) {
-        console.error("Error checking auth data:", err);
+        console.error('Error checking auth data:', err);
       }
     };
 
@@ -76,9 +76,9 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
 
   useEffect(() => {
     const handleTokenExpired = () => {
-      console.warn("Google token expired, disconnecting...");
+      console.warn('Google token expired, disconnecting...');
       disconnect();
-      setError("Your Google session has expired, please reconnect");
+      setError('Your Google session has expired, please reconnect');
     };
 
     window.addEventListener(GOOGLE_TOKEN_EXPIRED_EVENT, handleTokenExpired);
@@ -92,21 +92,16 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     setError(null);
 
     try {
-      const authResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/auth/google`,
-      );
+      const authResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/google`);
       const authData = await authResponse.json();
 
       if (!authData.success) {
-        throw new Error(
-          authData.message ||
-            "Error generating authorization URL",
-        );
+        throw new Error(authData.message || 'Error generating authorization URL');
       }
 
       window.location.href = authData.data.authUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : 'Unknown error');
       setIsConnecting(false);
     }
   };

@@ -1,44 +1,44 @@
 export function parseSourceConfig(source) {
   if (!source || !source.config) {
-    throw new Error("Source configuration is missing");
+    throw new Error('Source configuration is missing');
   }
 
-  if (typeof source.config === "object") {
+  if (typeof source.config === 'object') {
     return source.config;
   }
 
-  if (typeof source.config === "string") {
+  if (typeof source.config === 'string') {
     try {
       return JSON.parse(source.config);
     } catch (error) {
-      console.error("Failed to parse source config JSON:", error);
+      console.error('Failed to parse source config JSON:', error);
       throw new Error(`Invalid source configuration JSON: ${error.message}`);
     }
   }
 
-  throw new Error("Source configuration must be an object or valid JSON string");
+  throw new Error('Source configuration must be an object or valid JSON string');
 }
 
 export function validateDestinationPath(destination) {
-  if (!destination || typeof destination !== "string") {
-    throw new Error("Destination must be a non-empty string");
+  if (!destination || typeof destination !== 'string') {
+    throw new Error('Destination must be a non-empty string');
   }
 
   const trimmed = destination.trim();
 
   if (trimmed.length === 0) {
-    throw new Error("Destination cannot be empty");
+    throw new Error('Destination cannot be empty');
   }
 
-  if (trimmed.includes("..")) {
+  if (trimmed.includes('..')) {
     throw new Error("Destination cannot contain '..' (path traversal prevention)");
   }
 
-  if (trimmed.startsWith("/") || trimmed.startsWith("\\")) {
+  if (trimmed.startsWith('/') || trimmed.startsWith('\\')) {
     throw new Error("Destination cannot start with '/' or '\\' (must be relative)");
   }
 
-  const dangerousChars = ["<", ">", ":", '"', "|", "?", "*"];
+  const dangerousChars = ['<', '>', ':', '"', '|', '?', '*'];
   for (const char of dangerousChars) {
     if (trimmed.includes(char)) {
       throw new Error(`Destination cannot contain '${char}' character`);
@@ -46,13 +46,13 @@ export function validateDestinationPath(destination) {
   }
 
   if (trimmed.length > 200) {
-    throw new Error("Destination path too long (max 200 characters)");
+    throw new Error('Destination path too long (max 200 characters)');
   }
 
   return trimmed;
 }
 
-export function getValidatedDestination(config, fallback = "default") {
+export function getValidatedDestination(config, fallback = 'default') {
   const destination = config.destination || fallback;
   return validateDestinationPath(destination);
 }
@@ -68,7 +68,7 @@ export function enrichSourceWithConfig(source) {
 
     return {
       ...source,
-      config: parsedConfig
+      config: parsedConfig,
     };
   } catch (error) {
     console.error(`Failed to enrich source ${source.id || 'unknown'}:`, error);

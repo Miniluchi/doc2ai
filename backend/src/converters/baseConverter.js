@@ -1,15 +1,15 @@
-import fs from "fs-extra";
-import path from "path";
-import { generateFileChecksum } from "../utils/encryption.js";
+import fs from 'fs-extra';
+import path from 'path';
+import { generateFileChecksum } from '../utils/encryption.js';
 
 class BaseConverter {
   constructor() {
-    this.name = "Base Converter";
+    this.name = 'Base Converter';
     this.supportedExtensions = [];
   }
 
   async convert(_inputPath, _outputPath) {
-    throw new Error("convert() method must be implemented by subclass");
+    throw new Error('convert() method must be implemented by subclass');
   }
 
   async validateInputFile(filePath) {
@@ -49,14 +49,14 @@ class BaseConverter {
   }
 
   cleanMarkdown(markdown) {
-    if (!markdown) return "";
+    if (!markdown) return '';
 
-    let cleaned = markdown.replace(/\n{3,}/g, "\n\n");
-    cleaned = cleaned.replace(/[ \t]+$/gm, "");
+    let cleaned = markdown.replace(/\n{3,}/g, '\n\n');
+    cleaned = cleaned.replace(/[ \t]+$/gm, '');
     cleaned = cleaned.trim();
 
-    if (cleaned && !cleaned.endsWith("\n")) {
-      cleaned += "\n";
+    if (cleaned && !cleaned.endsWith('\n')) {
+      cleaned += '\n';
     }
 
     return cleaned;
@@ -64,22 +64,20 @@ class BaseConverter {
 
   addMetadata(markdown, metadata = {}) {
     const defaultMetadata = {
-      generated_by: "Doc2AI",
+      generated_by: 'Doc2AI',
       generated_at: new Date().toISOString(),
       ...metadata,
     };
 
     const metadataLines = [
-      "---",
-      ...Object.entries(defaultMetadata).map(
-        ([key, value]) => `${key}: ${value}`,
-      ),
-      "---",
-      "",
+      '---',
+      ...Object.entries(defaultMetadata).map(([key, value]) => `${key}: ${value}`),
+      '---',
+      '',
       markdown,
     ];
 
-    return metadataLines.join("\n");
+    return metadataLines.join('\n');
   }
 
   async saveMarkdown(markdown, outputPath) {
@@ -87,7 +85,7 @@ class BaseConverter {
       await this.prepareOutputFile(outputPath);
 
       const cleanedMarkdown = this.cleanMarkdown(markdown);
-      await fs.writeFile(outputPath, cleanedMarkdown, "utf8");
+      await fs.writeFile(outputPath, cleanedMarkdown, 'utf8');
 
       const checksum = await generateFileChecksum(outputPath);
 
@@ -136,9 +134,7 @@ class BaseConverter {
         isSupported: this.supportedExtensions.includes(extension),
       };
     } catch (error) {
-      throw new Error(
-        `Failed to get file info for ${filePath}: ${error.message}`,
-      );
+      throw new Error(`Failed to get file info for ${filePath}: ${error.message}`);
     }
   }
 

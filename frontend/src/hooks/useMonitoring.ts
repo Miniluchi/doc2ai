@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError, monitoringApi } from "../services/api";
-import type { MonitoringStatus, SyncLog } from "../types/api";
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError, monitoringApi } from '../services/api';
+import type { MonitoringStatus, SyncLog } from '../types/api';
 
 export function useMonitoring() {
   const [status, setStatus] = useState<MonitoringStatus | null>(null);
@@ -14,12 +14,9 @@ export function useMonitoring() {
       const data = await monitoringApi.getStatus();
       setStatus(data);
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load status";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load status';
       setError(errorMessage);
-      console.error("Error fetching monitoring status:", err);
+      console.error('Error fetching monitoring status:', err);
     } finally {
       setLoading(false);
     }
@@ -30,10 +27,7 @@ export function useMonitoring() {
       await monitoringApi.start();
       await fetchStatus();
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to start monitoring";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to start monitoring';
       throw new Error(errorMessage);
     }
   }, [fetchStatus]);
@@ -43,10 +37,7 @@ export function useMonitoring() {
       await monitoringApi.stop();
       await fetchStatus();
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to stop monitoring";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to stop monitoring';
       throw new Error(errorMessage);
     }
   }, [fetchStatus]);
@@ -56,10 +47,7 @@ export function useMonitoring() {
       await monitoringApi.restart();
       await fetchStatus();
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to restart monitoring";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to restart monitoring';
       throw new Error(errorMessage);
     }
   }, [fetchStatus]);
@@ -91,12 +79,9 @@ export function useLogs(sourceId?: string, limit = 50) {
       const data = await monitoringApi.getLogs(sourceId, limit);
       setLogs(data);
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to load logs";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load logs';
       setError(errorMessage);
-      console.error("Error fetching logs:", err);
+      console.error('Error fetching logs:', err);
     } finally {
       setLoading(false);
     }
@@ -126,12 +111,9 @@ export function useHealthCheck() {
       const data = await monitoringApi.healthCheck();
       setHealth(data);
     } catch (err) {
-      const errorMessage =
-        err instanceof ApiError
-          ? err.message
-          : "Failed to check health";
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to check health';
       setError(errorMessage);
-      console.error("Error fetching health status:", err);
+      console.error('Error fetching health status:', err);
     } finally {
       setLoading(false);
     }

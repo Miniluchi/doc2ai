@@ -9,13 +9,13 @@ import type {
   Source,
   SourceStats,
   SyncLog,
-} from "../types/api";
+} from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-console.log("API_BASE_URL: ", API_BASE_URL);
+console.log('API_BASE_URL: ', API_BASE_URL);
 
 /** Custom event dispatched when Google OAuth token is expired/revoked */
-export const GOOGLE_TOKEN_EXPIRED_EVENT = "google-auth-expired";
+export const GOOGLE_TOKEN_EXPIRED_EVENT = 'google-auth-expired';
 
 class ApiError extends Error {
   public status?: number;
@@ -23,50 +23,39 @@ class ApiError extends Error {
 
   constructor(message: string, status?: number, data?: any) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
     this.status = status;
     this.data = data;
   }
 }
 
-async function fetchApi<T>(
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
   const defaultOptions: RequestInit = {
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...options.headers,
     },
   };
 
-  console.log("fetchApi: Making request to:", url, "with options:", {
+  console.log('fetchApi: Making request to:', url, 'with options:', {
     ...defaultOptions,
     ...options,
   });
 
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
-    console.log(
-      "fetchApi: Response status:",
-      response.status,
-      response.statusText,
-    );
+    console.log('fetchApi: Response status:', response.status, response.statusText);
     const data = await response.json();
-    console.log("fetchApi: Response data:", data);
+    console.log('fetchApi: Response data:', data);
 
     if (!response.ok) {
-      if (response.status === 401 && data.code === "TOKEN_EXPIRED") {
+      if (response.status === 401 && data.code === 'TOKEN_EXPIRED') {
         window.dispatchEvent(new CustomEvent(GOOGLE_TOKEN_EXPIRED_EVENT));
       }
 
-      throw new ApiError(
-        data.message || "An error occurred",
-        response.status,
-        data,
-      );
+      throw new ApiError(data.message || 'An error occurred', response.status, data);
     }
 
     return data;
@@ -75,10 +64,7 @@ async function fetchApi<T>(
       throw error;
     }
 
-    throw new ApiError(
-      error instanceof Error ? error.message : "Connection error",
-      0,
-    );
+    throw new ApiError(error instanceof Error ? error.message : 'Connection error', 0);
   }
 }
 
@@ -86,7 +72,7 @@ async function fetchApi<T>(
 
 export const sourcesApi = {
   getAll: async (): Promise<Source[]> => {
-    const response = await fetchApi<ApiResponse<Source[]>>("/sources");
+    const response = await fetchApi<ApiResponse<Source[]>>('/sources');
     return response.data;
   },
 
@@ -96,22 +82,19 @@ export const sourcesApi = {
   },
 
   create: async (sourceData: CreateSourceRequest): Promise<Source> => {
-    console.log("API: Creating source with data:", sourceData);
-    console.log("API: Making POST request to:", `${API_BASE_URL}/sources`);
-    const response = await fetchApi<ApiResponse<Source>>("/sources", {
-      method: "POST",
+    console.log('API: Creating source with data:', sourceData);
+    console.log('API: Making POST request to:', `${API_BASE_URL}/sources`);
+    const response = await fetchApi<ApiResponse<Source>>('/sources', {
+      method: 'POST',
       body: JSON.stringify(sourceData),
     });
-    console.log("API: Create source response:", response);
+    console.log('API: Create source response:', response);
     return response.data;
   },
 
-  update: async (
-    id: string,
-    sourceData: Partial<CreateSourceRequest>,
-  ): Promise<Source> => {
+  update: async (id: string, sourceData: Partial<CreateSourceRequest>): Promise<Source> => {
     const response = await fetchApi<ApiResponse<Source>>(`/sources/${id}`, {
-      method: "PUT",
+      method: 'PUT',
       body: JSON.stringify(sourceData),
     });
     return response.data;
@@ -119,17 +102,14 @@ export const sourcesApi = {
 
   delete: async (id: string): Promise<void> => {
     await fetchApi<ApiResponse<null>>(`/sources/${id}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   },
 
   testConnection: async (id: string): Promise<ConnectionTestResult> => {
-    const response = await fetchApi<ApiResponse<ConnectionTestResult>>(
-      `/sources/${id}/test`,
-      {
-        method: "POST",
-      },
-    );
+    const response = await fetchApi<ApiResponse<ConnectionTestResult>>(`/sources/${id}/test`, {
+      method: 'POST',
+    });
     return response.data;
   },
 
@@ -142,7 +122,7 @@ export const sourcesApi = {
     const response = await fetchApi<ApiResponse<ConnectionTestResult>>(
       `/sources/test-credentials`,
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify(credentialsData),
       },
     );
@@ -150,16 +130,13 @@ export const sourcesApi = {
   },
 
   sync: async (id: string): Promise<void> => {
-    await fetchApi<ApiResponse<{ success: boolean; message: string }>>(
-      `/sources/${id}/sync`,
-      {
-        method: "POST",
-      },
-    );
+    await fetchApi<ApiResponse<{ success: boolean; message: string }>>(`/sources/${id}/sync`, {
+      method: 'POST',
+    });
   },
 
   getStats: async (): Promise<SourceStats> => {
-    const response = await fetchApi<ApiResponse<SourceStats>>("/sources/stats");
+    const response = await fetchApi<ApiResponse<SourceStats>>('/sources/stats');
     return response.data;
   },
 
@@ -170,7 +147,7 @@ export const sourcesApi = {
     const response = await fetchApi<ApiResponse<any[]>>(
       `/sources/google-drive/folders?parent_id=${encodeURIComponent(parentId)}`,
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({ credentials }),
       },
     );
@@ -184,8 +161,8 @@ export const sourcesApi = {
   ): Promise<{ totalFiles: number; convertibleFiles: number; files: any[] }> => {
     const response = await fetchApi<
       ApiResponse<{ totalFiles: number; convertibleFiles: number; files: any[] }>
-    >("/sources/google-drive/preview-files", {
-      method: "POST",
+    >('/sources/google-drive/preview-files', {
+      method: 'POST',
       body: JSON.stringify({ folder_id: folderId, credentials, extensions }),
     });
     return response.data;
@@ -206,15 +183,11 @@ export const conversionsApi = {
       ...(status && { status }),
     });
 
-    return await fetchApi<PaginatedResponse<ConversionJob>>(
-      `/conversions?${params}`,
-    );
+    return await fetchApi<PaginatedResponse<ConversionJob>>(`/conversions?${params}`);
   },
 
   getById: async (id: string): Promise<ConversionJob> => {
-    const response = await fetchApi<ApiResponse<ConversionJob>>(
-      `/conversions/${id}`,
-    );
+    const response = await fetchApi<ApiResponse<ConversionJob>>(`/conversions/${id}`);
     return response.data;
   },
 
@@ -224,33 +197,24 @@ export const conversionsApi = {
     filePath: string;
     fileSize?: number;
   }): Promise<ConversionJob> => {
-    const response = await fetchApi<ApiResponse<ConversionJob>>(
-      "/conversions",
-      {
-        method: "POST",
-        body: JSON.stringify(jobData),
-      },
-    );
+    const response = await fetchApi<ApiResponse<ConversionJob>>('/conversions', {
+      method: 'POST',
+      body: JSON.stringify(jobData),
+    });
     return response.data;
   },
 
   cancel: async (id: string): Promise<ConversionJob> => {
-    const response = await fetchApi<ApiResponse<ConversionJob>>(
-      `/conversions/${id}`,
-      {
-        method: "DELETE",
-      },
-    );
+    const response = await fetchApi<ApiResponse<ConversionJob>>(`/conversions/${id}`, {
+      method: 'DELETE',
+    });
     return response.data;
   },
 
   retry: async (id: string): Promise<ConversionJob> => {
-    const response = await fetchApi<ApiResponse<ConversionJob>>(
-      `/conversions/${id}/retry`,
-      {
-        method: "POST",
-      },
-    );
+    const response = await fetchApi<ApiResponse<ConversionJob>>(`/conversions/${id}/retry`, {
+      method: 'POST',
+    });
     return response.data;
   },
 
@@ -264,26 +228,20 @@ export const conversionsApi = {
     startedAt?: string;
     completedAt?: string;
   }> => {
-    const response = await fetchApi<ApiResponse<any>>(
-      `/conversions/${id}/progress`,
-    );
+    const response = await fetchApi<ApiResponse<any>>(`/conversions/${id}/progress`);
     return response.data;
   },
 
   getStats: async (): Promise<ConversionStats> => {
-    const response =
-      await fetchApi<ApiResponse<ConversionStats>>("/conversions/stats");
+    const response = await fetchApi<ApiResponse<ConversionStats>>('/conversions/stats');
     return response.data;
   },
 
   cleanup: async (olderThanDays = 30): Promise<{ deletedCount: number }> => {
-    const response = await fetchApi<ApiResponse<{ deletedCount: number }>>(
-      "/conversions/cleanup",
-      {
-        method: "POST",
-        body: JSON.stringify({ olderThanDays }),
-      },
-    );
+    const response = await fetchApi<ApiResponse<{ deletedCount: number }>>('/conversions/cleanup', {
+      method: 'POST',
+      body: JSON.stringify({ olderThanDays }),
+    });
     return response.data;
   },
 };
@@ -292,26 +250,25 @@ export const conversionsApi = {
 
 export const monitoringApi = {
   getStatus: async (): Promise<MonitoringStatus> => {
-    const response =
-      await fetchApi<ApiResponse<MonitoringStatus>>("/monitoring/status");
+    const response = await fetchApi<ApiResponse<MonitoringStatus>>('/monitoring/status');
     return response.data;
   },
 
   start: async (): Promise<void> => {
-    await fetchApi<ApiResponse<null>>("/monitoring/start", {
-      method: "POST",
+    await fetchApi<ApiResponse<null>>('/monitoring/start', {
+      method: 'POST',
     });
   },
 
   stop: async (): Promise<void> => {
-    await fetchApi<ApiResponse<null>>("/monitoring/stop", {
-      method: "POST",
+    await fetchApi<ApiResponse<null>>('/monitoring/stop', {
+      method: 'POST',
     });
   },
 
   restart: async (): Promise<void> => {
-    await fetchApi<ApiResponse<null>>("/monitoring/restart", {
-      method: "POST",
+    await fetchApi<ApiResponse<null>>('/monitoring/restart', {
+      method: 'POST',
     });
   },
 
@@ -321,15 +278,13 @@ export const monitoringApi = {
       ...(sourceId && { sourceId }),
     });
 
-    const response = await fetchApi<ApiResponse<SyncLog[]>>(
-      `/monitoring/logs?${params}`,
-    );
+    const response = await fetchApi<ApiResponse<SyncLog[]>>(`/monitoring/logs?${params}`);
     return response.data;
   },
 
   syncSource: async (sourceId: string): Promise<void> => {
     await fetchApi<ApiResponse<null>>(`/monitoring/sync/${sourceId}`, {
-      method: "POST",
+      method: 'POST',
     });
   },
 
@@ -341,7 +296,7 @@ export const monitoringApi = {
     lastSync?: string;
     timestamp: string;
   }> => {
-    const response = await fetchApi<ApiResponse<any>>("/monitoring/health");
+    const response = await fetchApi<ApiResponse<any>>('/monitoring/health');
     return response.data;
   },
 };
@@ -357,7 +312,7 @@ export const healthApi = {
     environment: string;
     endpoints: Record<string, string>;
   }> => {
-    const response = await fetchApi<any>("/health");
+    const response = await fetchApi<any>('/health');
     return response;
   },
 };
