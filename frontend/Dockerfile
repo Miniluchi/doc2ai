@@ -1,12 +1,12 @@
-FROM node:22-alpine as builder
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json bun.lock ./
 
 # Install dependencies
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -34,7 +34,7 @@ ENV VITE_EXPORT_PATH=${VITE_EXPORT_PATH}
 ENV CONDUCTOR_WORKSPACE_NAME=${CONDUCTOR_WORKSPACE_NAME}
 
 # Build the application
-RUN npm run build
+RUN bun run build
 
 # Production stage
 FROM nginx:alpine
