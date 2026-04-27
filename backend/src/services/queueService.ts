@@ -156,7 +156,7 @@ class QueueService {
     Array<{
       id: Bull.JobId;
       data: ConversionJobData;
-      failedReason: string;
+      failedReason: string | undefined;
       stacktrace: string[];
       timestamp: number;
       attemptsMade: number;

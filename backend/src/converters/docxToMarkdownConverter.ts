@@ -1,9 +1,35 @@
 import BaseConverter from './baseConverter.js';
-import mammoth from 'mammoth';
+import { createRequire } from 'node:module';
 import * as nodeFs from 'node:fs';
 import path from 'node:path';
 import logger from '../config/logger.js';
 import type { ConversionResult } from '../types/domain.js';
+
+interface MammothImageConverter { __mammothBrand: 'ImageConverter' }
+interface MammothImage {
+  contentType: string;
+  read(): Promise<Buffer>;
+  readAsBase64String(): Promise<string>;
+}
+interface MammothOptions {
+  styleMap?: string | string[];
+  convertImage?: MammothImageConverter;
+  ignoreEmptyParagraphs?: boolean;
+  idPrefix?: string;
+  includeEmbeddedStyleMap?: boolean;
+}
+interface MammothResult {
+  value: string;
+  messages: Array<{ type: string; message: string }>;
+}
+interface MammothModule {
+  convertToHtml(input: { path: string } | { buffer: Buffer }, options?: MammothOptions): Promise<MammothResult>;
+  convertToMarkdown(input: { path: string } | { buffer: Buffer }, options?: MammothOptions): Promise<MammothResult>;
+  images: { imgElement(fn: (img: MammothImage) => Promise<{ src: string; alt?: string }>): MammothImageConverter };
+}
+
+const _require = createRequire(import.meta.url);
+const mammoth = _require('mammoth') as MammothModule;
 
 class DocxToMarkdownConverter extends BaseConverter {
   constructor() {
@@ -26,7 +52,7 @@ class DocxToMarkdownConverter extends BaseConverter {
 
       this.updateProgress(20, 'Reading DOCX file');
 
-      const options: mammoth.Options = {
+      const options = {
         styleMap: [
           "p[style-name='Heading 1'] => h1:fresh",
           "p[style-name='Heading 2'] => h2:fresh",

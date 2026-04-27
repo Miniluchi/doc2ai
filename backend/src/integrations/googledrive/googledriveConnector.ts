@@ -1,6 +1,6 @@
 import DriveConnector from '../base/driveConnector.js';
 import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import fs from 'fs-extra';
 import path from 'node:path';
 import logger from '../../config/logger.js';
@@ -27,8 +27,8 @@ class GoogleDriveConnector extends DriveConnector {
     try {
       this.validateConfig();
 
-      const { clientId, clientSecret, refreshToken } = this.config
-        .credentials as GoogleCredentials;
+      const { clientId, clientSecret, refreshToken } = (this.config
+        .credentials as unknown) as GoogleCredentials;
 
       const tokenUrl = 'https://oauth2.googleapis.com/token';
 
@@ -81,7 +81,7 @@ class GoogleDriveConnector extends DriveConnector {
         },
       };
     } catch (error) {
-      const err = error as Error & { originalError?: { response?: { data?: unknown; message?: string } } };
+      const err = error as Error & { originalError?: { message?: string; response?: { data?: unknown; message?: string } } };
       return {
         success: false,
         message: err.message,
@@ -341,7 +341,7 @@ class GoogleDriveConnector extends DriveConnector {
   private async makeAuthenticatedRequest(
     url: string,
     config: AxiosRequestConfig = {},
-  ): Promise<ReturnType<typeof axios>> {
+  ): Promise<AxiosResponse> {
     await this.ensureAuthenticated();
 
     return axios({
@@ -363,7 +363,7 @@ class GoogleDriveConnector extends DriveConnector {
   override validateConfig(): boolean {
     super.validateConfig();
 
-    const { clientId, clientSecret, refreshToken } = (this.config.credentials as GoogleCredentials) ?? {};
+    const { clientId, clientSecret, refreshToken } = ((this.config.credentials as unknown) as GoogleCredentials) ?? {};
 
     if (!clientId || !clientSecret || !refreshToken) {
       throw new Error('Google Drive requires clientId, clientSecret, and refreshToken');

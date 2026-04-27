@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import pinoHttp from 'pino-http';
+import { pinoHttp } from 'pino-http';
 import { initializeDatabase, closeDatabase } from './config/database.js';
 import config from './config/env.js';
 import logger from './config/logger.js';
@@ -72,7 +72,7 @@ async function setupApp(): Promise<typeof app> {
 
   app.use('/api', apiRoutes);
 
-  app.get('/', (_req, res) => {
+  app.get('/', (_req: import('express').Request, res: import('express').Response) => {
     res.json({
       name: 'Doc2AI Backend',
       version: '1.0.0',

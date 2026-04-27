@@ -1,6 +1,6 @@
 import DriveConnector from '../base/driveConnector.js';
 import axios from 'axios';
-import type { AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import fs from 'fs-extra';
 import path from 'node:path';
 import logger from '../../config/logger.js';
@@ -35,8 +35,8 @@ class SharePointConnector extends DriveConnector {
     try {
       this.validateConfig();
 
-      const { clientId, clientSecret, tenantId } = this.config
-        .credentials as SharePointCredentials;
+      const { clientId, clientSecret, tenantId } = (this.config
+        .credentials as unknown) as SharePointCredentials;
 
       const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
@@ -101,7 +101,7 @@ class SharePointConnector extends DriveConnector {
         },
       };
     } catch (error) {
-      const err = error as Error & { originalError?: { response?: { data?: unknown; message?: string } } };
+      const err = error as Error & { originalError?: { message?: string; response?: { data?: unknown; message?: string } } };
       return {
         success: false,
         message: err.message,
@@ -251,7 +251,7 @@ class SharePointConnector extends DriveConnector {
   private async makeAuthenticatedRequest(
     url: string,
     config: AxiosRequestConfig = {},
-  ): Promise<ReturnType<typeof axios>> {
+  ): Promise<AxiosResponse> {
     await this.ensureAuthenticated();
 
     return axios({
@@ -274,7 +274,7 @@ class SharePointConnector extends DriveConnector {
     super.validateConfig();
 
     const { clientId, clientSecret, tenantId } =
-      (this.config.credentials as SharePointCredentials) ?? {};
+      ((this.config.credentials as unknown) as SharePointCredentials) ?? {};
 
     if (!clientId || !clientSecret || !tenantId) {
       throw new Error('SharePoint requires clientId, clientSecret, and tenantId');

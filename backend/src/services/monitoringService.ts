@@ -3,7 +3,7 @@ import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactor
 import ConversionService from './conversionService.js';
 import queueService from './queueService.js';
 import { decryptCredentials } from '../utils/encryption.js';
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import type { ScheduledTask } from 'node-cron';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
@@ -45,7 +45,7 @@ class MonitoringService {
     const decryptedConfig: SourceConfig = {
       ...parsedConfig,
       credentials: parsedConfig.credentials
-        ? decryptCredentials(parsedConfig.credentials as string)
+        ? decryptCredentials(parsedConfig.credentials as string) as string | Record<string, string>
         : null,
     };
 
@@ -86,7 +86,7 @@ class MonitoringService {
       }
 
       if (this.cronJob) {
-        this.cronJob.destroy();
+        this.cronJob.stop();
         this.cronJob = null;
       }
 

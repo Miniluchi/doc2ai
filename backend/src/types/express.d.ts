@@ -1,5 +1,6 @@
-// Augment Express Request with custom fields attached in middleware.
-declare module 'express-serve-static-core' {
+// Augment the global Express namespace — the intended extension point in express-serve-static-core.
+// core.Request extends Express.Request, so these fields are available on all Express requests.
+namespace Express {
   interface Request {
     user?: {
       userId?: string;
