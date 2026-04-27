@@ -4,7 +4,7 @@ import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactor
 import ConversionService from './conversionService.js';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
-import type { Source, ParsedSource, SourceConfig, SyncLog, FileInfo } from '../types/domain.js';
+import type { Source, ParsedSource, SourceConfig, FileInfo } from '../types/domain.js';
 import type DriveConnector from '../integrations/base/driveConnector.js';
 
 const prisma = getPrismaClient();
