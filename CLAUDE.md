@@ -36,10 +36,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### Frontend (React + TypeScript + Vite)
 
-- **Development**: `cd frontend && npm run dev`
-- **Build**: `cd frontend && npm run build` (includes TypeScript compilation)
-- **Linting**: `cd frontend && npm run lint`
-- **Preview**: `cd frontend && npm preview`
+- **Install**: `cd frontend && bun install`
+- **Development**: `cd frontend && bun run dev`
+- **Build**: `cd frontend && bun run build` (includes TypeScript compilation)
+- **Linting**: `cd frontend && bun run lint`
+- **Preview**: `cd frontend && bun run preview`
 
 ## Architecture Overview
 
@@ -181,15 +182,15 @@ EXPORT_PATH="./exports"
 - **Container tests**: `docker compose exec backend npm test`
 - **Container linting**:
   - Backend: `docker compose exec backend npm run lint`
-  - Frontend: `docker compose exec frontend npm run lint`
+  - Frontend: `docker compose exec frontend bun run lint`
 - **Database operations**: `docker compose exec backend npx prisma studio`
 
 ### Local Development
 
 - Backend: Jest for unit tests (`npm test` in backend/)
-- Always run linting before committing: `npm run lint` in both directories
+- Always run linting before committing: `npm run lint` (backend) and `bun run lint` (frontend)
 - Database changes require running `npm run prisma:migrate` in backend/
-- Frontend builds must pass TypeScript compilation: `npm run build`
+- Frontend builds must pass TypeScript compilation: `bun run build`
 
 ### Pre-commit Validation
 
