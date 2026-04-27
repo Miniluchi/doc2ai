@@ -16,3 +16,5 @@ temp/
 storage/
 dev.db*
 .DS_Store
+dist/
+src/**/*.ts
