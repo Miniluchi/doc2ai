@@ -1,19 +1,29 @@
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import { generateFileChecksum } from '../utils/encryption.js';
 import logger from '../config/logger.js';
+import type { ConversionResult } from '../types/domain.js';
 
-class BaseConverter {
+export interface FileInfo {
+  size: number;
+  extension: string;
+  modified: Date;
+  created: Date;
+  isSupported: boolean;
+}
+
+abstract class BaseConverter {
+  protected name: string;
+  protected supportedExtensions: string[];
+
   constructor() {
     this.name = 'Base Converter';
     this.supportedExtensions = [];
   }
 
-  async convert(_inputPath, _outputPath) {
-    throw new Error('convert() method must be implemented by subclass');
-  }
+  abstract convert(inputPath: string, outputPath: string): Promise<ConversionResult>;
 
-  async validateInputFile(filePath) {
+  async validateInputFile(filePath: string): Promise<boolean> {
     try {
       const exists = await fs.pathExists(filePath);
       if (!exists) {
@@ -36,7 +46,7 @@ class BaseConverter {
     }
   }
 
-  async prepareOutputFile(outputPath) {
+  async prepareOutputFile(outputPath: string): Promise<void> {
     try {
       await fs.ensureDir(path.dirname(outputPath));
 
@@ -49,7 +59,7 @@ class BaseConverter {
     }
   }
 
-  cleanMarkdown(markdown) {
+  cleanMarkdown(markdown: string): string {
     if (!markdown) return '';
 
     let cleaned = markdown.replace(/\n{3,}/g, '\n\n');
@@ -63,8 +73,8 @@ class BaseConverter {
     return cleaned;
   }
 
-  addMetadata(markdown, metadata = {}) {
-    const defaultMetadata = {
+  addMetadata(markdown: string, metadata: Record<string, unknown> = {}): string {
+    const defaultMetadata: Record<string, unknown> = {
       generated_by: 'Doc2AI',
       generated_at: new Date().toISOString(),
       ...metadata,
@@ -72,7 +82,7 @@ class BaseConverter {
 
     const metadataLines = [
       '---',
-      ...Object.entries(defaultMetadata).map(([key, value]) => `${key}: ${value}`),
+      ...Object.entries(defaultMetadata).map(([key, value]) => `${key}: ${String(value)}`),
       '---',
       '',
       markdown,
@@ -81,7 +91,7 @@ class BaseConverter {
     return metadataLines.join('\n');
   }
 
-  async saveMarkdown(markdown, outputPath) {
+  async saveMarkdown(markdown: string, outputPath: string): Promise<string> {
     try {
       await this.prepareOutputFile(outputPath);
 
@@ -102,13 +112,14 @@ class BaseConverter {
     }
   }
 
-  log(operation, details = {}) {
+  log(operation: string, details: Record<string, unknown> = {}): void {
     logger.info({ converter: this.name, ...details }, operation);
   }
 
-  handleError(error, operation, filePath) {
-    const errorMessage = `${operation} failed for ${filePath}: ${error.message}`;
-    logger.error({ err: error, converter: this.name, operation, filePath }, errorMessage);
+  handleError(error: unknown, operation: string, filePath: string): ConversionResult {
+    const err = error instanceof Error ? error : new Error(String(error));
+    const errorMessage = `${operation} failed for ${filePath}: ${err.message}`;
+    logger.error({ err, converter: this.name, operation, filePath }, errorMessage);
 
     return {
       success: false,
@@ -117,13 +128,13 @@ class BaseConverter {
         operation,
         filePath,
         converterName: this.name,
-        originalError: error.message,
-        stack: error.stack,
+        originalError: err.message,
+        stack: err.stack,
       },
     };
   }
 
-  async getFileInfo(filePath) {
+  async getFileInfo(filePath: string): Promise<FileInfo> {
     try {
       const stats = await fs.stat(filePath);
       const extension = path.extname(filePath).toLowerCase();
@@ -136,11 +147,11 @@ class BaseConverter {
         isSupported: this.supportedExtensions.includes(extension),
       };
     } catch (error) {
-      throw new Error(`Failed to get file info for ${filePath}: ${error.message}`);
+      throw new Error(`Failed to get file info for ${filePath}: ${(error as Error).message}`);
     }
   }
 
-  updateProgress(progress, message) {
+  updateProgress(progress: number, message: string): void {
     logger.info({ converter: this.name, progress }, message);
   }
 }

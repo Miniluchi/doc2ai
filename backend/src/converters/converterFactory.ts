@@ -1,8 +1,9 @@
 import DocxToMarkdownConverter from './docxToMarkdownConverter.js';
 import PdfToMarkdownConverter from './pdfToMarkdownConverter.js';
+import type BaseConverter from './baseConverter.js';
 
 class ConverterFactory {
-  static getConverter(fileExtension) {
+  static getConverter(fileExtension: string): BaseConverter {
     if (!fileExtension) {
       throw new Error('File extension is required');
     }
@@ -24,15 +25,15 @@ class ConverterFactory {
     }
   }
 
-  static getSupportedExtensions() {
+  static getSupportedExtensions(): string[] {
     return ['.docx', '.doc', '.pdf'];
   }
 
-  static isExtensionSupported(fileExtension) {
+  static isExtensionSupported(fileExtension: string): boolean {
     return this.getSupportedExtensions().includes(fileExtension.toLowerCase());
   }
 
-  static getConverterInfo() {
+  static getConverterInfo(): Record<string, Record<string, unknown>> {
     return {
       '.docx': {
         name: 'DOCX to Markdown',
@@ -57,7 +58,7 @@ class ConverterFactory {
     };
   }
 
-  static getConverterFromFileName(fileName) {
+  static getConverterFromFileName(fileName: string): BaseConverter {
     if (!fileName) {
       throw new Error('File name is required');
     }
@@ -66,7 +67,7 @@ class ConverterFactory {
     return this.getConverter(extension);
   }
 
-  static validateFile(fileName) {
+  static validateFile(fileName: string): { canConvert: boolean; reason?: string } {
     if (!fileName) {
       return { canConvert: false, reason: 'File name is required' };
     }

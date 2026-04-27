@@ -1,7 +1,8 @@
 import BaseConverter from './baseConverter.js';
 import { PDFParse } from 'pdf-parse';
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
+import type { ConversionResult } from '../types/domain.js';
 
 class PdfToMarkdownConverter extends BaseConverter {
   constructor() {
@@ -10,8 +11,8 @@ class PdfToMarkdownConverter extends BaseConverter {
     this.supportedExtensions = ['.pdf'];
   }
 
-  async convert(inputPath, outputPath) {
-    let parser = null;
+  override async convert(inputPath: string, outputPath: string): Promise<ConversionResult> {
+    let parser: InstanceType<typeof PDFParse> | null = null;
 
     try {
       this.log('convert', { inputPath, outputPath });
@@ -32,7 +33,10 @@ class PdfToMarkdownConverter extends BaseConverter {
 
       parser = new PDFParse({ data: dataBuffer });
 
-      const [textResult, infoResult] = await Promise.all([parser.getText(), parser.getInfo()]);
+      const [textResult, infoResult] = await Promise.all([
+        parser.getText(),
+        parser.getInfo(),
+      ]);
 
       this.updateProgress(60, 'Converting to Markdown');
 
@@ -40,16 +44,17 @@ class PdfToMarkdownConverter extends BaseConverter {
 
       this.updateProgress(80, 'Adding metadata and saving');
 
-      const metadata = {
+      const pdfInfo = infoResult.info as Record<string, unknown>;
+      const metadata: Record<string, unknown> = {
         source_file: path.basename(inputPath),
         file_size: fileInfo.size,
         converted_from: 'PDF',
         pages: textResult.total,
         pdf_info: {
-          title: infoResult.info?.Title || 'Unknown',
-          author: infoResult.info?.Author || 'Unknown',
-          creator: infoResult.info?.Creator || 'Unknown',
-          creation_date: infoResult.info?.CreationDate || null,
+          title: pdfInfo['Title'] ?? 'Unknown',
+          author: pdfInfo['Author'] ?? 'Unknown',
+          creator: pdfInfo['Creator'] ?? 'Unknown',
+          creation_date: pdfInfo['CreationDate'] ?? null,
         },
       };
 
@@ -67,7 +72,7 @@ class PdfToMarkdownConverter extends BaseConverter {
           inputSize: fileInfo.size,
           outputLength: markdown.length,
           pages: textResult.total,
-          title: infoResult.info?.Title,
+          title: pdfInfo['Title'],
         },
       };
     } catch (error) {
@@ -79,7 +84,7 @@ class PdfToMarkdownConverter extends BaseConverter {
     }
   }
 
-  convertTextToMarkdown(text, pageCount) {
+  private convertTextToMarkdown(text: string, pageCount: number): string {
     if (!text) return '';
 
     let markdown = text;
@@ -93,7 +98,7 @@ class PdfToMarkdownConverter extends BaseConverter {
     return markdown;
   }
 
-  cleanRawText(text) {
+  private cleanRawText(text: string): string {
     let cleaned = text;
 
     // eslint-disable-next-line no-control-regex
@@ -106,16 +111,14 @@ class PdfToMarkdownConverter extends BaseConverter {
     return cleaned;
   }
 
-  detectHeaders(text) {
-    let formatted = text;
-
-    const lines = formatted.split('\n');
-    const processedLines = [];
+  private detectHeaders(text: string): string {
+    const lines = text.split('\n');
+    const processedLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
-      const prevLine = i > 0 ? lines[i - 1].trim() : '';
+      const line = (lines[i] ?? '').trim();
+      const nextLine = (lines[i + 1] ?? '').trim();
+      const prevLine = (lines[i - 1] ?? '').trim();
 
       let isHeader = false;
       let headerLevel = 1;
@@ -146,7 +149,7 @@ class PdfToMarkdownConverter extends BaseConverter {
     return processedLines.join('\n');
   }
 
-  detectLists(text) {
+  private detectLists(text: string): string {
     let formatted = text;
 
     formatted = formatted.replace(/^[\s]*[•·‣▪▫‪‬]\s+(.+)$/gm, '- $1');
@@ -157,7 +160,7 @@ class PdfToMarkdownConverter extends BaseConverter {
     return formatted;
   }
 
-  detectParagraphs(text) {
+  private detectParagraphs(text: string): string {
     let formatted = text;
 
     formatted = formatted.replace(/\n([^\n\s-#*\d])/g, '\n\n$1');
@@ -166,16 +169,13 @@ class PdfToMarkdownConverter extends BaseConverter {
     return formatted;
   }
 
-  addPageBreaks(text, pageCount) {
+  private addPageBreaks(text: string, pageCount: number): string {
     if (pageCount <= 1) return text;
 
-    let enhanced = text;
-    enhanced = `> Extracted from a ${pageCount}-page PDF document\n\n` + enhanced;
-
-    return enhanced;
+    return `> Extracted from a ${pageCount}-page PDF document\n\n` + text;
   }
 
-  async validateInputFile(filePath) {
+  override async validateInputFile(filePath: string): Promise<boolean> {
     await super.validateInputFile(filePath);
 
     const extension = path.extname(filePath).toLowerCase();
@@ -192,7 +192,7 @@ class PdfToMarkdownConverter extends BaseConverter {
         throw new Error(`File does not appear to be a valid PDF: ${filePath}`);
       }
     } catch (error) {
-      if (error.code === 'ENOENT') {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         throw new Error(`PDF file not found: ${filePath}`);
       }
       throw error;
@@ -201,8 +201,10 @@ class PdfToMarkdownConverter extends BaseConverter {
     return true;
   }
 
-  async extractMetadata(filePath) {
-    let parser = null;
+  async extractMetadata(
+    filePath: string,
+  ): Promise<{ pages: number; info: Record<string, unknown>; textLength: number }> {
+    let parser: InstanceType<typeof PDFParse> | null = null;
 
     try {
       const dataBuffer = await fs.readFile(filePath);
@@ -211,16 +213,12 @@ class PdfToMarkdownConverter extends BaseConverter {
 
       return {
         pages: infoResult.total,
-        info: infoResult.info || {},
+        info: (infoResult.info as Record<string, unknown>) ?? {},
         textLength: 0,
       };
     } catch (error) {
-      this.log('metadata_extraction_failed', { error: error.message });
-      return {
-        pages: 0,
-        info: {},
-        textLength: 0,
-      };
+      this.log('metadata_extraction_failed', { error: (error as Error).message });
+      return { pages: 0, info: {}, textLength: 0 };
     } finally {
       if (parser) {
         await parser.destroy();
