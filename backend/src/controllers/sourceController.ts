@@ -1,327 +1,299 @@
 import { TokenExpiredError } from '../integrations/base/driveConnector.js';
 import SourceService from '../services/sourceService.js';
 import logger from '../config/logger.js';
+import type { Request, Response } from 'express';
 
 const sourceService = new SourceService();
 
 class SourceController {
-  // GET /api/sources
-  async getAllSources(req, res) {
+  async getAllSources(req: Request, res: Response): Promise<void> {
     try {
       const sources = await sourceService.getAllSources();
-      res.json({
-        success: true,
-        data: sources,
-      });
+      res.json({ success: true, data: sources });
     } catch (error) {
       logger.error({ err: error }, 'Error in getAllSources');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch sources',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // GET /api/sources/:id
-  async getSourceById(req, res) {
+  async getSourceById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const source = await sourceService.getSourceById(id);
+      const source = await sourceService.getSourceById(id!);
 
-      res.json({
-        success: true,
-        data: source,
-      });
+      res.json({ success: true, data: source });
     } catch (error) {
       logger.error({ err: error }, 'Error in getSourceById');
 
-      if (error.message === 'Source not found') {
-        return res.status(404).json({
-          success: false,
-          message: 'Source not found',
-        });
+      if ((error as Error).message === 'Source not found') {
+        res.status(404).json({ success: false, message: 'Source not found' });
+        return;
       }
 
       res.status(500).json({
         success: false,
         message: 'Failed to fetch source',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // POST /api/sources
-  async createSource(req, res) {
+  async createSource(req: Request, res: Response): Promise<void> {
     try {
-      const { name, platform, config } = req.body;
+      const { name, platform, config } = req.body as {
+        name?: string;
+        platform?: string;
+        config?: Record<string, unknown>;
+      };
 
       if (!name || !platform || !config) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Missing required fields: name, platform, config',
         });
+        return;
       }
 
       const supportedPlatforms = ['sharepoint', 'googledrive', 'onedrive'];
       if (!supportedPlatforms.includes(platform)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: `Unsupported platform. Supported: ${supportedPlatforms.join(', ')}`,
         });
+        return;
       }
 
-      const source = await sourceService.createSource(req.body);
+      const source = await sourceService.createSource(
+        req.body as Parameters<typeof sourceService.createSource>[0],
+      );
 
-      res.status(201).json({
-        success: true,
-        data: source,
-        message: 'Source created successfully',
-      });
+      res.status(201).json({ success: true, data: source, message: 'Source created successfully' });
     } catch (error) {
       logger.error({ err: error }, 'Error in createSource');
       res.status(500).json({
         success: false,
         message: 'Failed to create source',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // PUT /api/sources/:id
-  async updateSource(req, res) {
+  async updateSource(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const source = await sourceService.updateSource(id, req.body);
+      const source = await sourceService.updateSource(
+        id!,
+        req.body as Parameters<typeof sourceService.updateSource>[1],
+      );
 
-      res.json({
-        success: true,
-        data: source,
-        message: 'Source updated successfully',
-      });
+      res.json({ success: true, data: source, message: 'Source updated successfully' });
     } catch (error) {
       logger.error({ err: error }, 'Error in updateSource');
 
-      if (error.message === 'Source not found') {
-        return res.status(404).json({
-          success: false,
-          message: 'Source not found',
-        });
+      if ((error as Error).message === 'Source not found') {
+        res.status(404).json({ success: false, message: 'Source not found' });
+        return;
       }
 
       res.status(500).json({
         success: false,
         message: 'Failed to update source',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // DELETE /api/sources/:id
-  async deleteSource(req, res) {
+  async deleteSource(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      await sourceService.deleteSource(id);
+      await sourceService.deleteSource(id!);
 
-      res.json({
-        success: true,
-        message: 'Source deleted successfully',
-      });
+      res.json({ success: true, message: 'Source deleted successfully' });
     } catch (error) {
       logger.error({ err: error }, 'Error in deleteSource');
       res.status(500).json({
         success: false,
         message: 'Failed to delete source',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // POST /api/sources/test-credentials
-  async testCredentials(req, res) {
+  async testCredentials(req: Request, res: Response): Promise<void> {
     try {
-      const { platform, credentials, sourcePath, siteUrl } = req.body;
+      const { platform, credentials, sourcePath, siteUrl } = req.body as {
+        platform?: string;
+        credentials?: Record<string, string>;
+        sourcePath?: string;
+        siteUrl?: string;
+      };
 
       if (!platform || !credentials) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Missing required fields: platform, credentials',
         });
+        return;
       }
 
       const supportedPlatforms = ['sharepoint', 'googledrive', 'onedrive'];
       if (!supportedPlatforms.includes(platform)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: `Unsupported platform. Supported: ${supportedPlatforms.join(', ')}`,
         });
+        return;
       }
 
       const result = await sourceService.testCredentials({
         platform,
         credentials,
-        sourcePath: sourcePath || '/',
+        sourcePath: sourcePath ?? '/',
         ...(siteUrl && { siteUrl }),
       });
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      res.json({ success: true, data: result });
     } catch (error) {
       logger.error({ err: error }, 'Error in testCredentials');
       if (error instanceof TokenExpiredError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           code: 'TOKEN_EXPIRED',
           message: 'Your Google session has expired, please reconnect',
         });
+        return;
       }
       res.status(500).json({
         success: false,
         message: 'Credentials test failed',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // POST /api/sources/:id/test
-  async testConnection(req, res) {
+  async testConnection(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const result = await sourceService.testConnection(id);
+      const result = await sourceService.testConnection(id!);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      res.json({ success: true, data: result });
     } catch (error) {
       logger.error({ err: error }, 'Error in testConnection');
       if (error instanceof TokenExpiredError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           code: 'TOKEN_EXPIRED',
           message: 'Your Google session has expired, please reconnect',
         });
+        return;
       }
       res.status(500).json({
         success: false,
         message: 'Connection test failed',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // POST /api/sources/:id/sync
-  async syncSource(req, res) {
+  async syncSource(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const result = await sourceService.syncSource(id);
+      const result = await sourceService.syncSource(id!);
 
-      res.json({
-        success: true,
-        data: result,
-      });
+      res.json({ success: true, data: result });
     } catch (error) {
       logger.error({ err: error }, 'Error in syncSource');
       res.status(500).json({
         success: false,
         message: 'Sync failed',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // GET /api/sources/stats
-  async getStats(req, res) {
+  async getStats(_req: Request, res: Response): Promise<void> {
     try {
       const stats = await sourceService.getSourceStats();
-
-      res.json({
-        success: true,
-        data: stats,
-      });
+      res.json({ success: true, data: stats });
     } catch (error) {
       logger.error({ err: error }, 'Error in getStats');
       res.status(500).json({
         success: false,
         message: 'Failed to fetch statistics',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // GET /api/sources/google-drive/folders?parent_id=xxx&credentials=xxx
-  async getGoogleDriveFolders(req, res) {
+  async getGoogleDriveFolders(req: Request, res: Response): Promise<void> {
     try {
-      const { parent_id = 'root' } = req.query;
-      const { credentials } = req.body;
+      const { parent_id = 'root' } = req.query as { parent_id?: string };
+      const { credentials } = req.body as { credentials?: Record<string, string> };
 
       if (!credentials) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing Google Drive credentials',
-        });
+        res.status(400).json({ success: false, message: 'Missing Google Drive credentials' });
+        return;
       }
 
       const folders = await sourceService.getGoogleDriveFolders(parent_id, credentials);
 
-      res.json({
-        success: true,
-        data: folders,
-      });
+      res.json({ success: true, data: folders });
     } catch (error) {
       logger.error({ err: error }, 'Error in getGoogleDriveFolders');
       if (error instanceof TokenExpiredError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           code: 'TOKEN_EXPIRED',
           message: 'Your Google session has expired, please reconnect',
         });
+        return;
       }
       res.status(500).json({
         success: false,
         message: 'Failed to fetch Google Drive folders',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }
 
-  // POST /api/sources/google-drive/preview-files
-  async previewGoogleDriveFiles(req, res) {
+  async previewGoogleDriveFiles(req: Request, res: Response): Promise<void> {
     try {
       const {
         folder_id = 'root',
         credentials,
         extensions = ['.docx', '.pdf', '.doc', '.txt'],
-      } = req.body;
+      } = req.body as {
+        folder_id?: string;
+        credentials?: Record<string, string>;
+        extensions?: string[];
+      };
 
       if (!credentials) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing Google Drive credentials',
-        });
+        res.status(400).json({ success: false, message: 'Missing Google Drive credentials' });
+        return;
       }
 
       const files = await sourceService.previewGoogleDriveFiles(folder_id, credentials, extensions);
 
-      res.json({
-        success: true,
-        data: files,
-      });
+      res.json({ success: true, data: files });
     } catch (error) {
       logger.error({ err: error }, 'Error in previewGoogleDriveFiles');
       if (error instanceof TokenExpiredError) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           code: 'TOKEN_EXPIRED',
           message: 'Your Google session has expired, please reconnect',
         });
+        return;
       }
       res.status(500).json({
         success: false,
         message: 'Failed to preview Google Drive files',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }

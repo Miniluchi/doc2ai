@@ -1,10 +1,47 @@
 import BaseConverter from './baseConverter.js';
-import { createRequire } from 'module';
-import path from 'path';
+import { createRequire } from 'node:module';
+import * as nodeFs from 'node:fs';
+import path from 'node:path';
 import logger from '../config/logger.js';
+import type { ConversionResult } from '../types/domain.js';
 
-const require = createRequire(import.meta.url);
-const mammoth = require('mammoth');
+interface MammothImageConverter {
+  __mammothBrand: 'ImageConverter';
+}
+interface MammothImage {
+  contentType: string;
+  read(): Promise<Buffer>;
+  readAsBase64String(): Promise<string>;
+}
+interface MammothOptions {
+  styleMap?: string | string[];
+  convertImage?: MammothImageConverter;
+  ignoreEmptyParagraphs?: boolean;
+  idPrefix?: string;
+  includeEmbeddedStyleMap?: boolean;
+}
+interface MammothResult {
+  value: string;
+  messages: Array<{ type: string; message: string }>;
+}
+interface MammothModule {
+  convertToHtml(
+    input: { path: string } | { buffer: Buffer },
+    options?: MammothOptions,
+  ): Promise<MammothResult>;
+  convertToMarkdown(
+    input: { path: string } | { buffer: Buffer },
+    options?: MammothOptions,
+  ): Promise<MammothResult>;
+  images: {
+    imgElement(
+      fn: (img: MammothImage) => Promise<{ src: string; alt?: string }>,
+    ): MammothImageConverter;
+  };
+}
+
+const _require = createRequire(import.meta.url);
+const mammoth = _require('mammoth') as MammothModule;
 
 class DocxToMarkdownConverter extends BaseConverter {
   constructor() {
@@ -13,7 +50,7 @@ class DocxToMarkdownConverter extends BaseConverter {
     this.supportedExtensions = ['.docx', '.doc'];
   }
 
-  async convert(inputPath, outputPath) {
+  override async convert(inputPath: string, outputPath: string): Promise<ConversionResult> {
     try {
       this.log('convert', { inputPath, outputPath });
       this.updateProgress(10, 'Validating input file');
@@ -44,12 +81,8 @@ class DocxToMarkdownConverter extends BaseConverter {
         ],
         convertImage: mammoth.images.imgElement(async (image) => {
           await image.read();
-          const imageName = `image_${Date.now()}.${image.contentType.split('/')[1] || 'png'}`;
-
-          return {
-            src: `./images/${imageName}`,
-            alt: `Image ${imageName}`,
-          };
+          const imageName = `image_${Date.now()}.${image.contentType.split('/')[1] ?? 'png'}`;
+          return { src: `./images/${imageName}`, alt: `Image ${imageName}` };
         }),
         ignoreEmptyParagraphs: true,
       };
@@ -65,7 +98,7 @@ class DocxToMarkdownConverter extends BaseConverter {
 
       this.updateProgress(80, 'Adding metadata and saving');
 
-      const metadata = {
+      const metadata: Record<string, unknown> = {
         source_file: path.basename(inputPath),
         file_size: fileInfo.size,
         converted_from: 'DOCX',
@@ -79,10 +112,7 @@ class DocxToMarkdownConverter extends BaseConverter {
       if (result.messages.length > 0) {
         this.log('conversion_warnings', {
           count: result.messages.length,
-          messages: result.messages.map((m) => ({
-            type: m.type,
-            message: m.message,
-          })),
+          messages: result.messages.map((m) => ({ type: m.type, message: m.message })),
         });
       }
 
@@ -104,7 +134,7 @@ class DocxToMarkdownConverter extends BaseConverter {
     }
   }
 
-  enhanceMarkdown(markdown) {
+  private enhanceMarkdown(markdown: string): string {
     if (!markdown) return '';
 
     let enhanced = markdown;
@@ -120,13 +150,11 @@ class DocxToMarkdownConverter extends BaseConverter {
     return enhanced;
   }
 
-  fixTables(markdown) {
-    let fixed = markdown;
-    fixed = fixed.replace(/^([^|\n]*\|[^|\n]*\|[^|\n]*)$/gm, '|$1|');
-    return fixed;
+  private fixTables(markdown: string): string {
+    return markdown.replace(/^([^|\n]*\|[^|\n]*\|[^|\n]*)$/gm, '|$1|');
   }
 
-  async validateInputFile(filePath) {
+  override async validateInputFile(filePath: string): Promise<boolean> {
     await super.validateInputFile(filePath);
 
     const extension = path.extname(filePath).toLowerCase();
@@ -138,18 +166,17 @@ class DocxToMarkdownConverter extends BaseConverter {
     }
 
     // Check file magic bytes for valid Office document
-    const fs = require('fs');
     const buffer = Buffer.alloc(8);
-    const fd = fs.openSync(filePath, 'r');
+    const fd = nodeFs.openSync(filePath, 'r');
 
     try {
-      fs.readSync(fd, buffer, 0, 8, 0);
+      nodeFs.readSync(fd, buffer, 0, 8, 0);
 
       if (extension === '.docx' && !buffer.toString('ascii', 0, 2).includes('PK')) {
         logger.warn({ filePath }, 'File may not be a valid DOCX file');
       }
     } finally {
-      fs.closeSync(fd);
+      nodeFs.closeSync(fd);
     }
 
     return true;

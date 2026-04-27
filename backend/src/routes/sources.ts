@@ -4,7 +4,6 @@ import SourceController from '../controllers/sourceController.js';
 const router = express.Router();
 const sourceController = new SourceController();
 
-// Routes pour les sources
 router.get('/stats', sourceController.getStats.bind(sourceController));
 router.get('/', sourceController.getAllSources.bind(sourceController));
 router.get('/:id', sourceController.getSourceById.bind(sourceController));

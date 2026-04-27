@@ -1,24 +1,42 @@
 import DriveConnector from '../base/driveConnector.js';
 import axios from 'axios';
+import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import logger from '../../config/logger.js';
+import type { FileInfo, ConnectionTestResult, SourceConfig } from '../../types/domain.js';
+
+interface SharePointCredentials {
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+}
+
+interface SharePointConfig extends SourceConfig {
+  isOneDrive?: boolean;
+}
 
 class SharePointConnector extends DriveConnector {
-  constructor(config) {
+  private accessToken: string | null;
+  private tokenExpiry: number | null;
+  private readonly isOneDrive: boolean;
+  private readonly baseUrl = 'https://graph.microsoft.com/v1.0';
+  private siteId: string | null;
+
+  constructor(config: SharePointConfig) {
     super(config);
     this.accessToken = null;
     this.tokenExpiry = null;
-    this.isOneDrive = config.isOneDrive || false;
-    this.baseUrl = 'https://graph.microsoft.com/v1.0';
+    this.isOneDrive = config.isOneDrive ?? false;
     this.siteId = null;
   }
 
-  async authenticate() {
+  override async authenticate(): Promise<boolean> {
     try {
       this.validateConfig();
 
-      const { clientId, clientSecret, tenantId } = this.config.credentials;
+      const { clientId, clientSecret, tenantId } = this.config
+        .credentials as unknown as SharePointCredentials;
 
       const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
@@ -31,13 +49,12 @@ class SharePointConnector extends DriveConnector {
       this.log('authenticate', { tenantId, clientId: clientId.substring(0, 8) + '...' });
 
       const response = await axios.post(tokenUrl, params, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = Date.now() + response.data.expires_in * 1000;
+      const data = response.data as { access_token: string; expires_in: number };
+      this.accessToken = data.access_token;
+      this.tokenExpiry = Date.now() + data.expires_in * 1000;
       this.isAuthenticated = true;
 
       if (!this.isOneDrive && this.config.siteUrl) {
@@ -51,9 +68,9 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  async getSiteId() {
+  private async getSiteId(): Promise<void> {
     try {
-      const siteUrl = new URL(this.config.siteUrl);
+      const siteUrl = new URL(this.config.siteUrl!);
       const hostname = siteUrl.hostname;
       const sitePath = siteUrl.pathname;
 
@@ -61,14 +78,14 @@ class SharePointConnector extends DriveConnector {
         `${this.baseUrl}/sites/${hostname}:${sitePath}`,
       );
 
-      this.siteId = response.data.id;
+      this.siteId = (response.data as { id: string }).id;
       this.log('getSiteId', { siteId: this.siteId });
     } catch (error) {
       this.handleApiError(error, 'getSiteId');
     }
   }
 
-  async testConnection() {
+  override async testConnection(): Promise<ConnectionTestResult> {
     try {
       await this.authenticate();
 
@@ -84,21 +101,22 @@ class SharePointConnector extends DriveConnector {
         },
       };
     } catch (error) {
+      const err = error as Error & {
+        originalError?: { message?: string; response?: { data?: unknown; message?: string } };
+      };
       return {
         success: false,
-        message: error.message,
-        details: {
-          error: error.originalError?.response?.data || error.originalError?.message,
-        },
+        message: err.message,
+        details: { error: err.originalError?.response?.data ?? err.originalError?.message },
       };
     }
   }
 
-  async listFiles(folderPath = '/', limit = null) {
+  override async listFiles(folderPath = '/', limit: number | null = null): Promise<FileInfo[]> {
     try {
       await this.ensureAuthenticated();
 
-      let endpoint;
+      let endpoint: string;
       if (this.isOneDrive) {
         endpoint =
           folderPath === '/'
@@ -111,7 +129,7 @@ class SharePointConnector extends DriveConnector {
             : `${this.baseUrl}/sites/${this.siteId}/drive/root:${folderPath}:/children`;
       }
 
-      const params = {
+      const params: Record<string, unknown> = {
         $select: 'id,name,size,lastModifiedDateTime,file,webUrl,@microsoft.graph.downloadUrl',
         $filter: 'file ne null',
       };
@@ -123,7 +141,20 @@ class SharePointConnector extends DriveConnector {
       this.log('listFiles', { folderPath, limit, endpoint });
 
       const response = await this.makeAuthenticatedRequest(endpoint, { params });
-      const files = response.data.value || [];
+
+      const files =
+        (
+          response.data as {
+            value?: Array<{
+              id: string;
+              name: string;
+              size?: number;
+              lastModifiedDateTime: string;
+              webUrl?: string;
+              '@microsoft.graph.downloadUrl'?: string;
+            }>;
+          }
+        ).value ?? [];
 
       return files.map((file) =>
         this.normalizeFileInfo({
@@ -141,21 +172,22 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  async downloadFile(fileId, destinationDir) {
+  override async downloadFile(fileId: string, destinationDir: string): Promise<string> {
     try {
       await this.ensureAuthenticated();
 
-      let endpoint;
-      if (this.isOneDrive) {
-        endpoint = `${this.baseUrl}/me/drive/items/${fileId}`;
-      } else {
-        endpoint = `${this.baseUrl}/sites/${this.siteId}/drive/items/${fileId}`;
-      }
+      const endpoint = this.isOneDrive
+        ? `${this.baseUrl}/me/drive/items/${fileId}`
+        : `${this.baseUrl}/sites/${this.siteId}/drive/items/${fileId}`;
 
       this.log('downloadFile', { fileId, destinationDir });
 
       const fileInfoResponse = await this.makeAuthenticatedRequest(endpoint);
-      const fileInfo = fileInfoResponse.data;
+      const fileInfo = fileInfoResponse.data as {
+        name: string;
+        size?: number;
+        '@microsoft.graph.downloadUrl'?: string;
+      };
       const downloadUrl = fileInfo['@microsoft.graph.downloadUrl'];
 
       if (!downloadUrl) {
@@ -164,7 +196,7 @@ class SharePointConnector extends DriveConnector {
 
       await fs.ensureDir(destinationDir);
 
-      const response = await axios.get(downloadUrl, {
+      const response = await axios.get<NodeJS.ReadableStream>(downloadUrl, {
         responseType: 'stream',
       });
 
@@ -186,7 +218,10 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  async watchForChanges(folderPath, callback) {
+  override async watchForChanges(
+    folderPath: string,
+    callback: (files: FileInfo[]) => void,
+  ): Promise<() => void> {
     this.log('watchForChanges', {
       folderPath,
       note: 'Using polling approach - webhooks require additional setup',
@@ -217,7 +252,10 @@ class SharePointConnector extends DriveConnector {
     };
   }
 
-  async makeAuthenticatedRequest(url, config = {}) {
+  private async makeAuthenticatedRequest(
+    url: string,
+    config: AxiosRequestConfig = {},
+  ): Promise<AxiosResponse> {
     await this.ensureAuthenticated();
 
     return axios({
@@ -230,16 +268,17 @@ class SharePointConnector extends DriveConnector {
     });
   }
 
-  async ensureAuthenticated() {
-    if (!this.isAuthenticated || Date.now() >= this.tokenExpiry - 30000) {
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.isAuthenticated || Date.now() >= (this.tokenExpiry ?? 0) - 30000) {
       await this.authenticate();
     }
   }
 
-  validateConfig() {
+  override validateConfig(): boolean {
     super.validateConfig();
 
-    const { clientId, clientSecret, tenantId } = this.config.credentials;
+    const { clientId, clientSecret, tenantId } =
+      (this.config.credentials as unknown as SharePointCredentials) ?? {};
 
     if (!clientId || !clientSecret || !tenantId) {
       throw new Error('SharePoint requires clientId, clientSecret, and tenantId');
@@ -252,7 +291,7 @@ class SharePointConnector extends DriveConnector {
     return true;
   }
 
-  async cleanup() {
+  override async cleanup(): Promise<void> {
     this.accessToken = null;
     this.tokenExpiry = null;
     this.isAuthenticated = false;

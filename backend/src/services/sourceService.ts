@@ -4,29 +4,49 @@ import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactor
 import ConversionService from './conversionService.js';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
+import type { Source, ParsedSource, SourceConfig, FileInfo } from '../types/domain.js';
+import type DriveConnector from '../integrations/base/driveConnector.js';
 
 const prisma = getPrismaClient();
 
+interface CreateSourceData {
+  name: string;
+  platform: string;
+  config: SourceConfig;
+}
+
+interface SourceStats {
+  totalSources: number;
+  activeSources: number;
+  recentJobs: number;
+}
+
+interface PreviewResult {
+  totalFiles: number;
+  convertibleFiles: number;
+  files: Array<{
+    id: string;
+    name: string;
+    size: number;
+    modifiedTime: Date;
+    mimeType: string | null;
+  }>;
+}
+
 class SourceService {
-  async getAllSources() {
+  async getAllSources(): Promise<ParsedSource[]> {
     try {
       const sources = await prisma.source.findMany({
         include: {
-          jobs: {
-            take: 5,
-            orderBy: { createdAt: 'desc' },
-          },
-          syncLogs: {
-            take: 10,
-            orderBy: { createdAt: 'desc' },
-          },
+          jobs: { take: 5, orderBy: { createdAt: 'desc' } },
+          syncLogs: { take: 10, orderBy: { createdAt: 'desc' } },
         },
       });
 
       return sources.map((source) => {
-        const parsedConfig = JSON.parse(source.config);
+        const parsedConfig = JSON.parse(source.config) as SourceConfig;
         return {
-          ...source,
+          ...(source as unknown as Source),
           config: {
             ...parsedConfig,
             credentials: parsedConfig.credentials ? '***encrypted***' : null,
@@ -39,17 +59,13 @@ class SourceService {
     }
   }
 
-  async getSourceById(id) {
+  async getSourceById(id: string): Promise<ParsedSource> {
     try {
       const source = await prisma.source.findUnique({
         where: { id },
         include: {
-          jobs: {
-            orderBy: { createdAt: 'desc' },
-          },
-          syncLogs: {
-            orderBy: { createdAt: 'desc' },
-          },
+          jobs: { orderBy: { createdAt: 'desc' } },
+          syncLogs: { orderBy: { createdAt: 'desc' } },
         },
       });
 
@@ -58,8 +74,8 @@ class SourceService {
       }
 
       return {
-        ...source,
-        config: JSON.parse(source.config),
+        ...(source as unknown as Source),
+        config: JSON.parse(source.config) as SourceConfig,
       };
     } catch (error) {
       logger.error({ err: error }, 'Error fetching source');
@@ -67,22 +83,17 @@ class SourceService {
     }
   }
 
-  /**
-   * Create a new source with encrypted credentials.
-   * @param {object} sourceData - { name, platform, config: { credentials, sourcePath, destination, filters } }
-   * @returns {Promise<object>} Created Prisma Source record
-   */
-  async createSource(sourceData) {
+  async createSource(sourceData: CreateSourceData): Promise<Source> {
     try {
-      const { name, platform, config } = sourceData;
+      const { name, platform, config: sourceConfig } = sourceData;
 
-      if (!name || !platform || !config) {
+      if (!name || !platform || !sourceConfig) {
         throw new Error('Missing required fields: name, platform, config');
       }
 
-      const encryptedConfig = {
-        ...config,
-        credentials: config.credentials ? encryptCredentials(config.credentials) : null,
+      const encryptedConfig: SourceConfig = {
+        ...sourceConfig,
+        credentials: sourceConfig.credentials ? encryptCredentials(sourceConfig.credentials) : null,
       };
 
       const source = await prisma.source.create({
@@ -95,14 +106,14 @@ class SourceService {
       });
 
       logger.info(`Source created: ${name} (${platform})`);
-      return source;
+      return source as unknown as Source;
     } catch (error) {
       logger.error({ err: error }, 'Error creating source');
       throw error;
     }
   }
 
-  async updateSource(id, updateData) {
+  async updateSource(id: string, updateData: Partial<CreateSourceData>): Promise<Source> {
     try {
       const existingSource = await this.getSourceById(id);
 
@@ -119,25 +130,23 @@ class SourceService {
       const source = await prisma.source.update({
         where: { id },
         data: {
-          ...updateData,
-          config: updatedConfig,
+          ...(updateData as Record<string, unknown>),
+          config: JSON.stringify(updatedConfig),
           updatedAt: new Date(),
         },
       });
 
       logger.info(`Source updated: ${source.name}`);
-      return source;
+      return source as unknown as Source;
     } catch (error) {
       logger.error({ err: error }, 'Error updating source');
       throw error;
     }
   }
 
-  async deleteSource(id) {
+  async deleteSource(id: string): Promise<{ success: boolean }> {
     try {
-      await prisma.source.delete({
-        where: { id },
-      });
+      await prisma.source.delete({ where: { id } });
 
       logger.info(`Source deleted: ${id}`);
       return { success: true };
@@ -147,18 +156,18 @@ class SourceService {
     }
   }
 
-  /**
-   * Test raw credentials against a platform without persisting a source.
-   * @param {object} testData - { platform, credentials, sourcePath, siteUrl? }
-   * @returns {Promise<object>} Connection test result { success, message, details }
-   */
-  async testCredentials(testData) {
+  async testCredentials(testData: {
+    platform: string;
+    credentials: Record<string, string>;
+    sourcePath?: string;
+    siteUrl?: string;
+  }): Promise<{ success: boolean; message: string; details?: Record<string, unknown> }> {
     try {
       const { platform, credentials, sourcePath, siteUrl } = testData;
 
-      const testConfig = {
+      const testConfig: SourceConfig = {
         credentials,
-        sourcePath: sourcePath || '/',
+        sourcePath: sourcePath ?? '/',
         ...(siteUrl && { siteUrl }),
       };
 
@@ -174,23 +183,25 @@ class SourceService {
 
       return {
         success: false,
-        message: error.message || 'Credentials test failed',
+        message: (error as Error).message ?? 'Credentials test failed',
         details: {
           platform: testData.platform,
-          error: error.name || 'Unknown error',
+          error: (error as Error).name ?? 'Unknown error',
         },
       };
     }
   }
 
-  async testConnection(id) {
+  async testConnection(
+    id: string,
+  ): Promise<{ success: boolean; message: string; details?: Record<string, unknown> }> {
     try {
       const source = await this.getSourceById(id);
 
-      const decryptedConfig = {
+      const decryptedConfig: SourceConfig = {
         ...source.config,
         credentials: source.config.credentials
-          ? decryptCredentials(source.config.credentials)
+          ? (decryptCredentials(source.config.credentials as string) as Record<string, string>)
           : null,
       };
 
@@ -204,7 +215,7 @@ class SourceService {
           action: 'test_connection',
           status: result.success ? 'success' : 'error',
           message: result.message,
-          details: JSON.stringify(result.details || {}),
+          details: JSON.stringify(result.details ?? {}),
         },
       });
 
@@ -217,8 +228,8 @@ class SourceService {
           sourceId: id,
           action: 'test_connection',
           status: 'error',
-          message: error.message,
-          details: JSON.stringify({ error: error.stack }),
+          message: (error as Error).message,
+          details: JSON.stringify({ error: (error as Error).stack }),
         },
       });
 
@@ -226,41 +237,26 @@ class SourceService {
     }
   }
 
-  async syncSource(id) {
+  async syncSource(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Dynamic import to avoid circular dependencies
+      // Dynamic import to avoid circular dependency with monitoringService
       const monitoringService = (await import('./monitoringService.js')).default;
 
       await monitoringService.syncSource(id);
 
-      return {
-        success: true,
-        message: 'Sync completed successfully',
-      };
+      return { success: true, message: 'Sync completed successfully' };
     } catch (error) {
       logger.error({ err: error }, 'Sync failed');
       throw error;
     }
   }
 
-  async getSourceStats() {
+  async getSourceStats(): Promise<SourceStats> {
     try {
-      const stats = await prisma.source.aggregate({
-        _count: {
-          _all: true,
-        },
-      });
-
-      const activeCount = await prisma.source.count({
-        where: { status: 'active' },
-      });
-
+      const stats = await prisma.source.aggregate({ _count: { _all: true } });
+      const activeCount = await prisma.source.count({ where: { status: 'active' } });
       const recentJobs = await prisma.conversionJob.count({
-        where: {
-          createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          },
-        },
+        where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
       });
 
       return {
@@ -274,27 +270,30 @@ class SourceService {
     }
   }
 
-  /**
-   * List Google Drive folders under a given parent folder.
-   * @param {string} parentId - Drive folder ID (or "root")
-   * @param {object} credentials - Google OAuth credentials
-   * @returns {Promise<object[]>} Array of folder metadata objects
-   */
-  async getGoogleDriveFolders(parentId, credentials) {
+  async getGoogleDriveFolders(
+    parentId: string,
+    credentials: Record<string, string>,
+  ): Promise<FileInfo[]> {
     try {
       logger.info(`Fetching Google Drive folders from parent: ${parentId}`);
 
-      const config = {
-        credentials: credentials,
+      const connectorConfig: SourceConfig = {
+        credentials,
         sourcePath: parentId,
         destinations: [],
         filters: { extensions: [], excludePatterns: [] },
       };
 
-      const connector = DriveConnectorFactory.createConnector('googledrive', config);
+      const connector = DriveConnectorFactory.createConnector('googledrive', connectorConfig);
       await connector.authenticate();
 
-      const folders = await connector.listFolders(parentId);
+      // GoogleDriveConnector exposes listFolders — access via cast
+      const googleConnector = connector as DriveConnector & {
+        listFolders?: (id: string) => Promise<FileInfo[]>;
+      };
+      const folders = googleConnector.listFolders
+        ? await googleConnector.listFolders(parentId)
+        : [];
 
       await connector.cleanup();
 
@@ -306,18 +305,15 @@ class SourceService {
     }
   }
 
-  /**
-   * Preview convertible files in a Google Drive folder without creating jobs.
-   * @param {string} folderId - Drive folder ID
-   * @param {object} credentials - Google OAuth credentials
-   * @param {string[]|object} allowedExtensions - File extensions to include (e.g. [".docx", ".pdf"])
-   * @returns {Promise<{totalFiles: number, convertibleFiles: number, files: object[]}>}
-   */
-  async previewGoogleDriveFiles(folderId, credentials, allowedExtensions) {
+  async previewGoogleDriveFiles(
+    folderId: string,
+    credentials: Record<string, string>,
+    allowedExtensions: string[] | Record<string, string> | string,
+  ): Promise<PreviewResult> {
     try {
       logger.info(`Previewing files in Google Drive folder: ${folderId}`);
 
-      let extensionsArray;
+      let extensionsArray: string[];
       if (Array.isArray(allowedExtensions)) {
         extensionsArray = allowedExtensions;
       } else if (typeof allowedExtensions === 'object' && allowedExtensions !== null) {
@@ -326,43 +322,36 @@ class SourceService {
         extensionsArray = [allowedExtensions];
       }
 
-      const config = {
-        credentials: credentials,
+      const connectorConfig: SourceConfig = {
+        credentials,
         sourcePath: folderId,
         destinations: [],
         filters: { extensions: extensionsArray, excludePatterns: [] },
       };
 
-      const connector = DriveConnectorFactory.createConnector('googledrive', config);
+      const connector = DriveConnectorFactory.createConnector('googledrive', connectorConfig);
       await connector.authenticate();
 
       const files = await connector.listFiles(folderId);
 
       const filteredFiles = files.filter((file) => {
-        if (!file.name) {
-          return false;
-        }
-        const fileName = file.name.toLowerCase();
-        const mimeType = file.mimeType || '';
+        if (!file.name) return false;
 
-        // Check for Google native docs (will be exported as DOCX/PDF)
+        const fileName = file.name.toLowerCase();
+        const mimeType = file.mimeType ?? '';
+
         const isGoogleDoc = mimeType === 'application/vnd.google-apps.document';
         const isGoogleSheet = mimeType === 'application/vnd.google-apps.spreadsheet';
         const isGoogleSlide = mimeType === 'application/vnd.google-apps.presentation';
 
-        if (isGoogleDoc || isGoogleSheet || isGoogleSlide) {
-          return true;
-        }
+        if (isGoogleDoc || isGoogleSheet || isGoogleSlide) return true;
 
-        // Check if the file matches an allowed extension
-        const matches = extensionsArray.some((ext) => {
+        return extensionsArray.some((ext) => {
           const extension = ext.toLowerCase().startsWith('.')
             ? ext.toLowerCase()
             : `.${ext.toLowerCase()}`;
           return fileName.endsWith(extension);
         });
-
-        return matches;
       });
 
       await connector.cleanup();
@@ -386,7 +375,12 @@ class SourceService {
     }
   }
 
-  async processFilesForConversion(files, source, connector, syncLogId) {
+  async processFilesForConversion(
+    files: FileInfo[],
+    source: ParsedSource,
+    connector: DriveConnector,
+    syncLogId: string,
+  ): Promise<void> {
     const conversionService = new ConversionService();
     let processedCount = 0;
     let errorCount = 0;
@@ -398,7 +392,7 @@ class SourceService {
         try {
           const existingFile = await prisma.convertedFile.findFirst({
             where: {
-              originalPath: file.path || file.id,
+              originalPath: file.path ?? file.id,
               platform: source.platform,
             },
             orderBy: { createdAt: 'desc' },
@@ -407,9 +401,7 @@ class SourceService {
           if (existingFile && file.modifiedTime) {
             const fileModified = new Date(file.modifiedTime);
             const lastProcessed = existingFile.createdAt;
-            if (fileModified <= lastProcessed) {
-              continue;
-            }
+            if (fileModified <= lastProcessed) continue;
           }
 
           logger.info(`Processing file: ${file.name}`);
@@ -433,11 +425,8 @@ class SourceService {
               sourceId: source.id,
               action: 'file_process',
               status: 'error',
-              message: `Failed to process ${file.name}: ${error.message}`,
-              details: JSON.stringify({
-                fileName: file.name,
-                error: error.stack,
-              }),
+              message: `Failed to process ${file.name}: ${(error as Error).message}`,
+              details: JSON.stringify({ fileName: file.name, error: (error as Error).stack }),
             },
           });
         }
@@ -468,9 +457,9 @@ class SourceService {
         where: { id: syncLogId },
         data: {
           status: 'error',
-          message: `Sync failed: ${error.message}`,
+          message: `Sync failed: ${(error as Error).message}`,
           details: JSON.stringify({
-            error: error.stack,
+            error: (error as Error).stack,
             processedFiles: processedCount,
             totalFiles: files.length,
           }),

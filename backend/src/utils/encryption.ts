@@ -1,14 +1,14 @@
-import crypto from 'crypto';
-import fs from 'fs';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12; // Pour GCM
+const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
-const ENCODING = 'base64';
+const ENCODING = 'base64' as const;
 
-export function encryptCredentials(data) {
+export function encryptCredentials(data: unknown): string {
   try {
     const text = typeof data === 'string' ? data : JSON.stringify(data);
 
@@ -20,16 +20,14 @@ export function encryptCredentials(data) {
 
     const tag = cipher.getAuthTag();
 
-    const result = Buffer.concat([iv, tag, Buffer.from(encrypted, ENCODING)]).toString(ENCODING);
-
-    return result;
+    return Buffer.concat([iv, tag, Buffer.from(encrypted, ENCODING)]).toString(ENCODING);
   } catch (error) {
     logger.error({ err: error }, 'Encryption failed');
     throw new Error('Failed to encrypt credentials');
   }
 }
 
-export function decryptCredentials(encryptedData) {
+export function decryptCredentials(encryptedData: string): unknown {
   try {
     if (!encryptedData) {
       throw new Error('No encrypted data provided');
@@ -47,7 +45,7 @@ export function decryptCredentials(encryptedData) {
     decrypted += decipher.final('utf8');
 
     try {
-      return JSON.parse(decrypted);
+      return JSON.parse(decrypted) as unknown;
     } catch {
       return decrypted;
     }
@@ -57,19 +55,20 @@ export function decryptCredentials(encryptedData) {
   }
 }
 
-export function generateEncryptionKey() {
+export function generateEncryptionKey(): string {
   return crypto.randomBytes(32).toString('hex');
 }
 
-export function hashPassword(password) {
+export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
   return `${salt}:${hash}`;
 }
 
-export function verifyPassword(password, hashedPassword) {
+export function verifyPassword(password: string, hashedPassword: string): boolean {
   try {
     const [salt, hash] = hashedPassword.split(':');
+    if (!salt || !hash) return false;
     const verifyHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     return hash === verifyHash;
   } catch (error) {
@@ -78,10 +77,9 @@ export function verifyPassword(password, hashedPassword) {
   }
 }
 
-export async function generateFileChecksum(filePath) {
+export function generateFileChecksum(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('md5');
-
     const stream = fs.createReadStream(filePath);
 
     stream.on('data', (data) => {

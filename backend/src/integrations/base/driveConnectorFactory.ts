@@ -1,8 +1,14 @@
 import SharePointConnector from '../sharepoint/sharepointConnector.js';
 import GoogleDriveConnector from '../googledrive/googledriveConnector.js';
+import type DriveConnector from './driveConnector.js';
+import type { SourceConfig } from '../../types/domain.js';
+
+interface SharePointConfig extends SourceConfig {
+  isOneDrive?: boolean;
+}
 
 class DriveConnectorFactory {
-  static createConnector(platform, config) {
+  static createConnector(platform: string, config: SourceConfig): DriveConnector {
     if (!platform) {
       throw new Error('Platform is required');
     }
@@ -21,12 +27,11 @@ class DriveConnectorFactory {
       case 'google-drive':
         return new GoogleDriveConnector(config);
 
-      case 'onedrive':
+      case 'onedrive': {
         // OneDrive uses the same Microsoft Graph API as SharePoint
-        return new SharePointConnector({
-          ...config,
-          isOneDrive: true,
-        });
+        const onedriveConfig: SharePointConfig = { ...config, isOneDrive: true };
+        return new SharePointConnector(onedriveConfig);
+      }
 
       default:
         throw new Error(
@@ -35,15 +40,15 @@ class DriveConnectorFactory {
     }
   }
 
-  static getSupportedPlatforms() {
+  static getSupportedPlatforms(): string[] {
     return ['sharepoint', 'googledrive', 'onedrive'];
   }
 
-  static isPlatformSupported(platform) {
+  static isPlatformSupported(platform: string): boolean {
     return this.getSupportedPlatforms().includes(platform.toLowerCase());
   }
 
-  static getConfigSchema(platform) {
+  static getConfigSchema(platform: string): Record<string, unknown> {
     const normalizedPlatform = platform.toLowerCase();
 
     switch (normalizedPlatform) {
@@ -128,45 +133,49 @@ class DriveConnectorFactory {
     }
   }
 
-  static validateConfig(platform, config) {
+  static validateConfig(
+    platform: string,
+    config: Record<string, unknown>,
+  ): { valid: boolean; errors: string[] } {
     try {
       const schema = this.getConfigSchema(platform);
-      const errors = [];
+      const errors: string[] = [];
 
-      function validateObject(obj, schemaObj, path = '') {
+      function validateObject(
+        obj: Record<string, unknown>,
+        schemaObj: Record<string, unknown>,
+        pathPrefix = '',
+      ): void {
         for (const [key, schemaValue] of Object.entries(schemaObj)) {
-          const currentPath = path ? `${path}.${key}` : key;
+          const currentPath = pathPrefix ? `${pathPrefix}.${key}` : key;
+          const sv = schemaValue as Record<string, unknown>;
 
-          if (typeof schemaValue === 'object' && schemaValue.required !== undefined) {
-            if (schemaValue.required && !obj[key]) {
+          if (typeof sv === 'object' && sv['required'] !== undefined) {
+            if (sv['required'] && !obj[key]) {
               errors.push(`Missing required field: ${currentPath}`);
-            } else if (obj[key] && schemaValue.type) {
+            } else if (obj[key] && sv['type']) {
               const actualType = Array.isArray(obj[key]) ? 'array' : typeof obj[key];
-              if (actualType !== schemaValue.type) {
+              if (actualType !== sv['type']) {
                 errors.push(
-                  `Invalid type for ${currentPath}: expected ${schemaValue.type}, got ${actualType}`,
+                  `Invalid type for ${currentPath}: expected ${String(sv['type'])}, got ${actualType}`,
                 );
               }
             }
-          } else if (typeof schemaValue === 'object') {
-            if (obj[key]) {
-              validateObject(obj[key], schemaValue, currentPath);
-            }
+          } else if (typeof sv === 'object' && obj[key]) {
+            validateObject(
+              obj[key] as Record<string, unknown>,
+              sv as Record<string, unknown>,
+              currentPath,
+            );
           }
         }
       }
 
-      validateObject(config, schema);
+      validateObject(config, schema as Record<string, unknown>);
 
-      return {
-        valid: errors.length === 0,
-        errors,
-      };
+      return { valid: errors.length === 0, errors };
     } catch (error) {
-      return {
-        valid: false,
-        errors: [`Validation error: ${error.message}`],
-      };
+      return { valid: false, errors: [`Validation error: ${(error as Error).message}`] };
     }
   }
 }

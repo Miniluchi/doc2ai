@@ -1,49 +1,48 @@
 import axios from 'axios';
+import type { Request, Response } from 'express';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
 
 class AuthController {
-  // GET /api/auth/google/callback
-  async googleCallback(req, res) {
+  async googleCallback(req: Request, res: Response): Promise<void> {
     try {
-      const { code, error } = req.query;
+      const { code, error } = req.query as { code?: string; error?: string };
 
       if (error) {
-        return res.status(400).json({
-          success: false,
-          message: 'Authorization denied',
-          error: error,
-        });
+        res.status(400).json({ success: false, message: 'Authorization denied', error });
+        return;
       }
 
       if (!code) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Missing authorization code',
           error: 'No code parameter found in callback',
         });
+        return;
       }
 
-      const tokenResponse = await axios.post(
+      const tokenResponse = await axios.post<{
+        access_token: string;
+        refresh_token?: string;
+        expires_in: number;
+        scope: string;
+      }>(
         'https://oauth2.googleapis.com/token',
         {
-          client_id: process.env.GOOGLE_CLIENT_ID,
-          client_secret: process.env.GOOGLE_CLIENT_SECRET,
-          code: code,
+          client_id: process.env['GOOGLE_CLIENT_ID'],
+          client_secret: process.env['GOOGLE_CLIENT_SECRET'],
+          code,
           grant_type: 'authorization_code',
           redirect_uri: config.google.redirectUri,
         },
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        },
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
       );
 
       const { access_token, refresh_token, expires_in, scope } = tokenResponse.data;
 
       if (!refresh_token) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'No refresh token received',
           error:
@@ -54,17 +53,15 @@ class AuthController {
             scope,
           },
         });
+        return;
       }
 
       try {
-        const userInfoResponse = await axios.get(
-          'https://www.googleapis.com/drive/v3/about?fields=user',
-          {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
-          },
-        );
+        const userInfoResponse = await axios.get<{
+          user?: { emailAddress?: string; displayName?: string; photoLink?: string };
+        }>('https://www.googleapis.com/drive/v3/about?fields=user', {
+          headers: { Authorization: `Bearer ${access_token}` },
+        });
 
         const userInfo = userInfoResponse.data.user;
 
@@ -74,16 +71,16 @@ class AuthController {
           expires_in,
           scope,
           user: {
-            email: userInfo.emailAddress,
-            name: userInfo.displayName,
-            photoLink: userInfo.photoLink,
+            email: userInfo?.emailAddress,
+            name: userInfo?.displayName,
+            photoLink: userInfo?.photoLink,
           },
         };
 
         const encodedData = Buffer.from(JSON.stringify(successData)).toString('base64');
         const frontendUrl = config.corsOrigin;
 
-        return res.redirect(`${frontendUrl}/auth/callback?data=${encodedData}&success=true`);
+        res.redirect(`${frontendUrl}/auth/callback?data=${encodedData}&success=true`);
       } catch (userInfoError) {
         logger.warn({ err: userInfoError }, 'Could not fetch user info');
 
@@ -92,47 +89,40 @@ class AuthController {
           access_token,
           expires_in,
           scope,
-          user: {
-            email: 'unknown@gmail.com',
-            name: 'Google User',
-            photoLink: null,
-          },
+          user: { email: 'unknown@gmail.com', name: 'Google User', photoLink: null },
         };
 
         const encodedFallbackData = Buffer.from(JSON.stringify(fallbackData)).toString('base64');
         const frontendUrl = config.corsOrigin;
 
-        return res.redirect(
-          `${frontendUrl}/auth/callback?data=${encodedFallbackData}&success=true`,
-        );
+        res.redirect(`${frontendUrl}/auth/callback?data=${encodedFallbackData}&success=true`);
       }
     } catch (error) {
       logger.error({ err: error }, 'Error in Google OAuth callback');
 
-      let errorMessage = 'OAuth callback failed';
-      let errorDetails = error.message;
-
-      if (error.response?.data) {
-        errorMessage =
-          error.response.data.error_description || error.response.data.error || errorMessage;
-        errorDetails = error.response.data;
-      }
+      const axiosErr = error as {
+        message: string;
+        response?: { data?: { error_description?: string; error?: string } };
+      };
+      const errorMessage =
+        axiosErr.response?.data?.error_description ??
+        axiosErr.response?.data?.error ??
+        'OAuth callback failed';
 
       res.status(500).json({
         success: false,
         message: errorMessage,
-        error: errorDetails,
+        error: axiosErr.response?.data ?? axiosErr.message,
       });
     }
   }
 
-  // GET /api/auth/google
-  async getGoogleAuthUrl(req, res) {
+  async getGoogleAuthUrl(req: Request, res: Response): Promise<void> {
     try {
       const baseUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
       const params = new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        redirect_uri: config.google.redirectUri,
+        client_id: process.env['GOOGLE_CLIENT_ID'] ?? '',
+        redirect_uri: config.google.redirectUri ?? '',
         response_type: 'code',
         scope: 'https://www.googleapis.com/auth/drive',
         access_type: 'offline',
@@ -159,7 +149,7 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: 'Failed to generate authorization URL',
-        error: error.message,
+        error: (error as Error).message,
       });
     }
   }

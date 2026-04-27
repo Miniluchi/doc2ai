@@ -3,13 +3,28 @@ import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactor
 import ConversionService from './conversionService.js';
 import queueService from './queueService.js';
 import { decryptCredentials } from '../utils/encryption.js';
-import cron from 'node-cron';
+import * as cron from 'node-cron';
+import type { ScheduledTask } from 'node-cron';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
+import type { Source, SourceConfig, SyncLog, FileInfo } from '../types/domain.js';
+import type DriveConnector from '../integrations/base/driveConnector.js';
 
 const prisma = getPrismaClient();
 
+interface ActiveMonitor {
+  source: Source;
+  connector: DriveConnector;
+  lastCheck: Date;
+}
+
 class MonitoringService {
+  isRunning: boolean;
+  private readonly activeMonitors: Map<string, ActiveMonitor>;
+  private readonly syncInProgress: Set<string>;
+  private readonly conversionService: ConversionService;
+  private cronJob: ScheduledTask | null;
+
   constructor() {
     this.isRunning = false;
     this.activeMonitors = new Map();
@@ -18,22 +33,28 @@ class MonitoringService {
     this.cronJob = null;
   }
 
-  _parseAndDecryptConfig(source) {
-    const parsedConfig =
-      typeof source.config === 'string' ? JSON.parse(source.config) : source.config;
+  private _parseAndDecryptConfig(source: Source): {
+    parsedConfig: SourceConfig;
+    decryptedConfig: SourceConfig;
+  } {
+    const parsedConfig: SourceConfig =
+      typeof source.config === 'string'
+        ? (JSON.parse(source.config) as SourceConfig)
+        : (source.config as unknown as SourceConfig);
 
-    const decryptedConfig = {
+    const decryptedConfig: SourceConfig = {
       ...parsedConfig,
-      credentials: parsedConfig.credentials ? decryptCredentials(parsedConfig.credentials) : null,
+      credentials: parsedConfig.credentials
+        ? (decryptCredentials(parsedConfig.credentials as string) as
+            | string
+            | Record<string, string>)
+        : null,
     };
 
     return { parsedConfig, decryptedConfig };
   }
 
-  /**
-   * Start the monitoring service: connects all active sources and schedules periodic syncs.
-   */
-  async start() {
+  async start(): Promise<void> {
     try {
       if (this.isRunning) {
         logger.warn('Monitoring service is already running');
@@ -42,12 +63,10 @@ class MonitoringService {
 
       logger.info('Starting monitoring service...');
 
-      const activeSources = await prisma.source.findMany({
-        where: { status: 'active' },
-      });
+      const activeSources = await prisma.source.findMany({ where: { status: 'active' } });
 
       for (const source of activeSources) {
-        await this.startSourceMonitoring(source);
+        await this.startSourceMonitoring(source as unknown as Source);
       }
 
       this.startCronJob();
@@ -60,7 +79,7 @@ class MonitoringService {
     }
   }
 
-  async stop() {
+  async stop(): Promise<void> {
     try {
       logger.info('Stopping monitoring service...');
 
@@ -69,7 +88,7 @@ class MonitoringService {
       }
 
       if (this.cronJob) {
-        this.cronJob.destroy();
+        this.cronJob.stop();
         this.cronJob = null;
       }
 
@@ -81,7 +100,7 @@ class MonitoringService {
     }
   }
 
-  startCronJob() {
+  private startCronJob(): void {
     const cronExpression = `*/${config.syncIntervalMinutes} * * * *`;
 
     this.cronJob = cron.schedule(
@@ -90,20 +109,13 @@ class MonitoringService {
         logger.info('Running scheduled sync...');
         await this.syncAllActiveSources();
       },
-      {
-        scheduled: true,
-        timezone: 'Europe/Paris',
-      },
+      { scheduled: true, timezone: 'Europe/Paris' },
     );
 
     logger.info(`Cron job scheduled: every ${config.syncIntervalMinutes} minutes`);
   }
 
-  /**
-   * Initialize monitoring for a single source: authenticate, test connection, and register the active monitor.
-   * @param {object} source - Prisma Source record
-   */
-  async startSourceMonitoring(source) {
+  async startSourceMonitoring(source: Source): Promise<void> {
     try {
       logger.info(`Starting monitoring for: ${source.name}`);
 
@@ -116,11 +128,7 @@ class MonitoringService {
         throw new Error(`Connection failed: ${connectionTest.message}`);
       }
 
-      this.activeMonitors.set(source.id, {
-        source,
-        connector,
-        lastCheck: new Date(),
-      });
+      this.activeMonitors.set(source.id, { source, connector, lastCheck: new Date() });
 
       await prisma.syncLog.create({
         data: {
@@ -138,19 +146,17 @@ class MonitoringService {
           sourceId: source.id,
           action: 'monitor_start',
           status: 'error',
-          message: error.message,
-          details: JSON.stringify({ error: error.stack }),
+          message: (error as Error).message,
+          details: JSON.stringify({ error: (error as Error).stack }),
         },
       });
     }
   }
 
-  async stopSourceMonitoring(sourceId) {
+  async stopSourceMonitoring(sourceId: string): Promise<void> {
     try {
       const monitor = this.activeMonitors.get(sourceId);
-      if (!monitor) {
-        return;
-      }
+      if (!monitor) return;
 
       logger.info(`Stopping monitoring for: ${monitor.source.name}`);
 
@@ -173,7 +179,7 @@ class MonitoringService {
     }
   }
 
-  async syncAllActiveSources() {
+  async syncAllActiveSources(): Promise<void> {
     const monitors = Array.from(this.activeMonitors.values());
 
     for (const monitor of monitors) {
@@ -185,12 +191,7 @@ class MonitoringService {
     }
   }
 
-  /**
-   * Sync a source: list remote files, filter by config, and enqueue conversion jobs for new/changed files.
-   * Skips if a sync is already in progress for this source.
-   * @param {string} sourceId - Source DB id
-   */
-  async syncSource(sourceId) {
+  async syncSource(sourceId: string): Promise<void> {
     if (this.syncInProgress.has(sourceId)) {
       logger.warn({ sourceId }, 'Sync already in progress for source');
       return;
@@ -201,10 +202,7 @@ class MonitoringService {
     try {
       const monitor = this.activeMonitors.get(sourceId);
 
-      // Always fetch fresh source data from DB
-      const source = await prisma.source.findUnique({
-        where: { id: sourceId },
-      });
+      const source = await prisma.source.findUnique({ where: { id: sourceId } });
 
       if (!source) {
         throw new Error('Source not found');
@@ -214,15 +212,15 @@ class MonitoringService {
         throw new Error('Source must be active to sync');
       }
 
-      let connector;
+      let connector: DriveConnector;
 
       if (monitor) {
         connector = monitor.connector;
-        monitor.source = source;
+        monitor.source = source as unknown as Source;
       } else {
         logger.info(`Manual sync for source: ${sourceId}`);
 
-        const { decryptedConfig } = this._parseAndDecryptConfig(source);
+        const { decryptedConfig } = this._parseAndDecryptConfig(source as unknown as Source);
 
         connector = DriveConnectorFactory.createConnector(source.platform, decryptedConfig);
         await connector.authenticate();
@@ -230,47 +228,44 @@ class MonitoringService {
 
       logger.info(`Syncing source: ${source.name}`);
 
-      const { parsedConfig } = this._parseAndDecryptConfig(source);
+      const { parsedConfig } = this._parseAndDecryptConfig(source as unknown as Source);
 
-      const sourcePath = parsedConfig.sourcePath || '/';
+      const sourcePath = parsedConfig.sourcePath ?? '/';
       const files = await connector.listFiles(sourcePath);
 
-      // Normalize filters (may be objects {"0":".docx",...} instead of arrays)
+      // Normalize filters (may arrive as {"0":".docx",...} objects instead of arrays)
       const rawExtensions = parsedConfig.filters?.extensions;
-      const supportedExtensions = Array.isArray(rawExtensions)
+      const supportedExtensions: string[] = Array.isArray(rawExtensions)
         ? rawExtensions
         : rawExtensions && typeof rawExtensions === 'object'
-          ? Object.values(rawExtensions)
+          ? Object.values(rawExtensions as Record<string, string>)
           : ['.docx', '.pdf', '.doc'];
 
       const rawExclude = parsedConfig.filters?.excludePatterns;
-      const excludePatterns = Array.isArray(rawExclude)
+      const excludePatterns: string[] = Array.isArray(rawExclude)
         ? rawExclude
         : rawExclude && typeof rawExclude === 'object'
-          ? Object.values(rawExclude)
+          ? Object.values(rawExclude as Record<string, string>)
           : [];
 
-      // Map Google Apps mimeTypes to their equivalent extensions
-      const googleMimeToExt = {
+      const googleMimeToExt: Record<string, string> = {
         'application/vnd.google-apps.document': '.docx',
         'application/vnd.google-apps.spreadsheet': '.xlsx',
         'application/vnd.google-apps.presentation': '.pptx',
       };
 
       const filteredFiles = files.filter((file) => {
-        // Check by file name extension
         const hasValidExtension = supportedExtensions.some((ext) =>
           file.name.toLowerCase().endsWith(ext.toLowerCase()),
         );
 
-        // Or by Google Apps mimeType (these files have no extension in their name)
-        const googleExt = googleMimeToExt[file.mimeType];
+        const googleExt = file.mimeType ? googleMimeToExt[file.mimeType] : undefined;
         const matchesGoogleType =
-          googleExt && supportedExtensions.some((ext) => ext.toLowerCase() === googleExt);
+          googleExt !== undefined &&
+          supportedExtensions.some((ext) => ext.toLowerCase() === googleExt);
 
         if (!hasValidExtension && !matchesGoogleType) return false;
 
-        // Check exclusion patterns
         const isExcluded = excludePatterns.some((pattern) => file.name.match(new RegExp(pattern)));
 
         return !isExcluded;
@@ -309,8 +304,8 @@ class MonitoringService {
             sourceId,
             action: 'sync',
             status: 'error',
-            message: error.message,
-            details: JSON.stringify({ error: error.stack }),
+            message: (error as Error).message,
+            details: JSON.stringify({ error: (error as Error).stack }),
           },
         });
       } catch (dbError) {
@@ -323,12 +318,16 @@ class MonitoringService {
     }
   }
 
-  async processFileChange(sourceId, file, connector) {
+  private async processFileChange(
+    sourceId: string,
+    file: FileInfo,
+    connector: DriveConnector,
+  ): Promise<void> {
     try {
       const existingFile = await prisma.convertedFile.findFirst({
         where: {
           originalPath: file.path,
-          platform: file.platform || 'unknown',
+          platform: file.platform ?? 'unknown',
         },
       });
 
@@ -353,42 +352,41 @@ class MonitoringService {
           sourceId,
           action: 'file_process',
           status: 'error',
-          message: `Failed to process ${file.name}: ${error.message}`,
-          details: JSON.stringify({
-            fileName: file.name,
-            error: error.stack,
-          }),
+          message: `Failed to process ${file.name}: ${(error as Error).message}`,
+          details: JSON.stringify({ fileName: file.name, error: (error as Error).stack }),
         },
       });
     }
   }
 
-  async getStatus() {
+  async getStatus(): Promise<{
+    isRunning: boolean;
+    activeMonitors: number;
+    totalActiveSources: number;
+    lastSync: Date | null;
+    recentLogs: SyncLog[];
+  }> {
     try {
       const activeSourceCount = this.activeMonitors.size;
-      const totalSources = await prisma.source.count({
-        where: { status: 'active' },
-      });
+      const totalSources = await prisma.source.count({ where: { status: 'active' } });
 
       const recentLogs = await prisma.syncLog.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
-        include: {
-          source: {
-            select: { name: true },
-          },
-        },
+        include: { source: { select: { name: true } } },
       });
+
+      const lastCheck =
+        Array.from(this.activeMonitors.values())
+          .map((m) => m.lastCheck)
+          .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 
       return {
         isRunning: this.isRunning,
         activeMonitors: activeSourceCount,
         totalActiveSources: totalSources,
-        lastSync:
-          Array.from(this.activeMonitors.values())
-            .map((m) => m.lastCheck)
-            .sort((a, b) => b - a)[0] || null,
-        recentLogs,
+        lastSync: lastCheck,
+        recentLogs: recentLogs as unknown as SyncLog[],
       };
     } catch (error) {
       logger.error({ err: error }, 'Error getting monitoring status');
@@ -396,7 +394,7 @@ class MonitoringService {
     }
   }
 
-  async getLogs(sourceId = null, limit = 50) {
+  async getLogs(sourceId: string | null = null, limit = 50): Promise<SyncLog[]> {
     try {
       const where = sourceId ? { sourceId } : {};
 
@@ -404,14 +402,10 @@ class MonitoringService {
         where,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          source: {
-            select: { name: true, platform: true },
-          },
-        },
+        include: { source: { select: { name: true, platform: true } } },
       });
 
-      return logs;
+      return logs as unknown as SyncLog[];
     } catch (error) {
       logger.error({ err: error }, 'Error fetching logs');
       throw error;
@@ -419,7 +413,6 @@ class MonitoringService {
   }
 }
 
-// Singleton instance
 const monitoringService = new MonitoringService();
 
 export default monitoringService;

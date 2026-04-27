@@ -1,15 +1,28 @@
 import getPrismaClient from '../config/database.js';
 import { ConverterFactory } from '../converters/converterFactory.js';
-import path from 'path';
+import path from 'node:path';
 import fs from 'fs-extra';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
 import { enrichSourceWithConfig, getValidatedDestination } from '../utils/configParser.js';
+import type { ConversionJob, ParsedSource } from '../types/domain.js';
 
 const prisma = getPrismaClient();
 
+// Extended ConversionJob shape returned by service methods that include source
+interface JobWithSource extends ConversionJob {
+  source: ParsedSource;
+}
+
 class ConversionService {
-  async getAllJobs(page = 1, limit = 20, status = null) {
+  async getAllJobs(
+    page = 1,
+    limit = 20,
+    status: string | null = null,
+  ): Promise<{
+    jobs: ConversionJob[];
+    pagination: { page: number; limit: number; total: number; pages: number };
+  }> {
     try {
       const skip = (page - 1) * limit;
       const where = status ? { status } : {};
@@ -17,9 +30,7 @@ class ConversionService {
       const jobs = await prisma.conversionJob.findMany({
         where,
         include: {
-          source: {
-            select: { id: true, name: true, platform: true },
-          },
+          source: { select: { id: true, name: true, platform: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -29,7 +40,7 @@ class ConversionService {
       const total = await prisma.conversionJob.count({ where });
 
       return {
-        jobs,
+        jobs: jobs as unknown as ConversionJob[],
         pagination: {
           page,
           limit,
@@ -43,39 +54,34 @@ class ConversionService {
     }
   }
 
-  async getJobById(id) {
+  async getJobById(id: string): Promise<JobWithSource> {
     try {
       const job = await prisma.conversionJob.findUnique({
         where: { id },
-        include: {
-          source: true,
-        },
+        include: { source: true },
       });
 
       if (!job) {
         throw new Error('Conversion job not found');
       }
 
-      if (job.source) {
-        job.source = enrichSourceWithConfig(job.source);
-      }
+      const enrichedSource = enrichSourceWithConfig(
+        job.source as unknown as Parameters<typeof enrichSourceWithConfig>[0],
+      );
 
-      return job;
+      return { ...(job as unknown as ConversionJob), source: enrichedSource };
     } catch (error) {
       logger.error({ err: error }, 'Error fetching job');
       throw error;
     }
   }
 
-  /**
-   * Create a new pending ConversionJob record in the database.
-   * @param {string} sourceId - ID of the parent Source
-   * @param {string} fileName - Original file name
-   * @param {string} filePath - Local path to the downloaded file
-   * @param {number|null} [fileSize] - File size in bytes
-   * @returns {Promise<object>} Created job with source relation
-   */
-  async createJob(sourceId, fileName, filePath, fileSize = null) {
+  async createJob(
+    sourceId: string,
+    fileName: string,
+    filePath: string,
+    fileSize: number | null = null,
+  ): Promise<JobWithSource> {
     try {
       const job = await prisma.conversionJob.create({
         data: {
@@ -85,48 +91,34 @@ class ConversionService {
           fileSize,
           status: 'pending',
         },
-        include: {
-          source: true,
-        },
+        include: { source: true },
       });
 
-      if (job.source) {
-        job.source = enrichSourceWithConfig(job.source);
-      }
+      const enrichedSource = enrichSourceWithConfig(
+        job.source as unknown as Parameters<typeof enrichSourceWithConfig>[0],
+      );
 
       logger.info(`Conversion job created: ${fileName}`);
-      return job;
+      return { ...(job as unknown as ConversionJob), source: enrichedSource };
     } catch (error) {
       logger.error({ err: error }, 'Error creating job');
       throw error;
     }
   }
 
-  /**
-   * Execute a conversion job: download → convert → export → mark complete.
-   * Updates job status and progress in the database throughout.
-   * @param {string} jobId - ConversionJob DB id
-   * @returns {Promise<object>} Completed job record
-   * @throws {Error} On conversion failure (job is also marked as failed in DB)
-   */
-  async processJob(jobId) {
-    let job;
+  async processJob(jobId: string): Promise<ConversionJob> {
+    let job: JobWithSource | undefined;
     try {
       job = await this.getJobById(jobId);
 
-      const parsedConfig = job.source.config;
+      // Save parsed config before the update re-fetches raw source from DB
+      const parsedSourceConfig = job.source.config;
+      const sourceName = job.source.name;
 
-      job = await prisma.conversionJob.update({
+      await prisma.conversionJob.update({
         where: { id: jobId },
-        data: {
-          status: 'processing',
-          startedAt: new Date(),
-          progress: 10,
-        },
-        include: { source: true },
+        data: { status: 'processing', startedAt: new Date(), progress: 10 },
       });
-
-      job.source.config = parsedConfig;
 
       logger.info(`Processing job: ${job.fileName}`);
 
@@ -143,7 +135,7 @@ class ConversionService {
       await fs.ensureDir(config.tempPath);
 
       const outputFileName = path.basename(job.fileName, fileExtension) + '.md';
-      const destinationFolder = getValidatedDestination(job.source.config, job.source.name);
+      const destinationFolder = getValidatedDestination(parsedSourceConfig, sourceName);
       const outputPath = path.join(config.storagePath, destinationFolder, outputFileName);
 
       await fs.ensureDir(path.dirname(outputPath));
@@ -152,7 +144,7 @@ class ConversionService {
       const result = await converter.convert(job.filePath, outputPath);
 
       if (!result.success) {
-        throw new Error(result.error || 'Conversion failed');
+        throw new Error(result.error ?? 'Conversion failed');
       }
 
       await this.updateJobProgress(jobId, 80, 'Exporting to configured destination');
@@ -160,8 +152,7 @@ class ConversionService {
       try {
         await fs.ensureDir(config.exportPath);
 
-        const destination = getValidatedDestination(job.source.config, job.source.name);
-
+        const destination = getValidatedDestination(parsedSourceConfig, sourceName);
         const exportFilePath = path.join(config.exportPath, destination, outputFileName);
 
         await fs.ensureDir(path.dirname(exportFilePath));
@@ -173,12 +164,7 @@ class ConversionService {
 
       const completedJob = await prisma.conversionJob.update({
         where: { id: jobId },
-        data: {
-          status: 'completed',
-          progress: 100,
-          outputPath,
-          completedAt: new Date(),
-        },
+        data: { status: 'completed', progress: 100, outputPath, completedAt: new Date() },
       });
 
       await prisma.convertedFile.create({
@@ -188,23 +174,19 @@ class ConversionService {
           fileName: outputFileName,
           fileType: fileExtension,
           platform: job.source.platform,
-          checksum: result.checksum || 'unknown',
+          checksum: result.checksum ?? 'unknown',
         },
       });
 
       logger.info(`Job completed: ${job.fileName}`);
-      return completedJob;
+      return completedJob as unknown as ConversionJob;
     } catch (error) {
       logger.error({ err: error, fileName: job?.fileName, jobId }, 'Job failed');
 
       await prisma.conversionJob
         .update({
           where: { id: jobId },
-          data: {
-            status: 'failed',
-            error: error.message,
-            completedAt: new Date(),
-          },
+          data: { status: 'failed', error: (error as Error).message, completedAt: new Date() },
         })
         .catch(() => null);
 
@@ -212,13 +194,11 @@ class ConversionService {
     }
   }
 
-  async updateJobProgress(jobId, progress, message = null) {
+  async updateJobProgress(jobId: string, progress: number, message?: string): Promise<void> {
     try {
       await prisma.conversionJob.update({
         where: { id: jobId },
-        data: {
-          progress: Math.min(100, Math.max(0, progress)),
-        },
+        data: { progress: Math.min(100, Math.max(0, progress)) },
       });
 
       if (message) {
@@ -229,47 +209,42 @@ class ConversionService {
     }
   }
 
-  async cancelJob(jobId) {
+  async cancelJob(jobId: string): Promise<ConversionJob> {
     try {
       const job = await prisma.conversionJob.update({
         where: {
           id: jobId,
           status: { in: ['pending', 'processing'] },
         },
-        data: {
-          status: 'failed',
-          error: 'Cancelled by user',
-          completedAt: new Date(),
-        },
+        data: { status: 'failed', error: 'Cancelled by user', completedAt: new Date() },
       });
 
       logger.info(`Job cancelled: ${job.fileName}`);
-      return job;
+      return job as unknown as ConversionJob;
     } catch (error) {
       logger.error({ err: error }, 'Error cancelling job');
       throw error;
     }
   }
 
-  async getJobStats() {
+  async getJobStats(): Promise<{
+    byStatus: Record<string, number>;
+    recent: number;
+  }> {
     try {
       const stats = await prisma.conversionJob.groupBy({
         by: ['status'],
-        _count: {
-          _all: true,
-        },
+        _count: { _all: true },
       });
 
       const recent = await prisma.conversionJob.count({
         where: {
-          createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24h
-          },
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
       });
 
       return {
-        byStatus: stats.reduce((acc, stat) => {
+        byStatus: stats.reduce<Record<string, number>>((acc, stat) => {
           acc[stat.status] = stat._count._all;
           return acc;
         }, {}),
@@ -281,7 +256,7 @@ class ConversionService {
     }
   }
 
-  async cleanupCompletedJobs(olderThanDays = 30) {
+  async cleanupCompletedJobs(olderThanDays = 30): Promise<number> {
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
@@ -289,9 +264,7 @@ class ConversionService {
       const result = await prisma.conversionJob.deleteMany({
         where: {
           status: 'completed',
-          completedAt: {
-            lt: cutoffDate,
-          },
+          completedAt: { lt: cutoffDate },
         },
       });
 

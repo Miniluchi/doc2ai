@@ -1,25 +1,41 @@
-FROM node:22-alpine
+# ── Build stage ──────────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
 
-# Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copy package files and Prisma config
+COPY package*.json ./
+COPY prisma ./prisma/
+COPY prisma.config.js ./
+COPY tsconfig.json ./
+
+# Install all deps (including devDeps for tsc)
+RUN npm ci
+
+COPY src ./src/
+
+# Compile TypeScript
+RUN npm run build
+
+# ── Runtime stage ─────────────────────────────────────────────────────────────
+FROM node:22-alpine
+
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+
 COPY package*.json ./
 COPY prisma ./prisma/
 COPY prisma.config.js ./
 
-# Install dependencies and generate Prisma client
+# Production deps + Prisma client generation
 RUN npm ci --omit=dev \
   && npx prisma generate \
   && mkdir -p /app/storage /app/temp /app/prisma
 
-# Copy source code
-COPY src ./src/
+COPY --from=builder /app/dist ./dist/
 
-# Expose port
 EXPOSE 3000
 
-# Start the application with automatic database sync
-CMD ["sh", "-c", "npx prisma db push && npm start"]
+CMD ["sh", "-c", "npx prisma db push && node dist/app.js"]
