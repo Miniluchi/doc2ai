@@ -153,9 +153,7 @@ export function asyncErrorHandler(
   };
 }
 
-export function wrapAsync(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
-) {
+export function wrapAsync(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
   return function (req: Request, res: Response, next: NextFunction): void {
     fn(req, res, next).catch(next);
   };
@@ -179,12 +177,7 @@ export function validationErrorHandler(
   next(error);
 }
 
-export function logError(
-  error: AppError,
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): void {
+export function logError(error: AppError, req: Request, _res: Response, next: NextFunction): void {
   logger.error(
     {
       err: error,

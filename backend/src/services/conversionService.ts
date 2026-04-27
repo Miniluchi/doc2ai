@@ -65,7 +65,9 @@ class ConversionService {
         throw new Error('Conversion job not found');
       }
 
-      const enrichedSource = enrichSourceWithConfig(job.source as unknown as Parameters<typeof enrichSourceWithConfig>[0]);
+      const enrichedSource = enrichSourceWithConfig(
+        job.source as unknown as Parameters<typeof enrichSourceWithConfig>[0],
+      );
 
       return { ...(job as unknown as ConversionJob), source: enrichedSource };
     } catch (error) {
@@ -92,7 +94,9 @@ class ConversionService {
         include: { source: true },
       });
 
-      const enrichedSource = enrichSourceWithConfig(job.source as unknown as Parameters<typeof enrichSourceWithConfig>[0]);
+      const enrichedSource = enrichSourceWithConfig(
+        job.source as unknown as Parameters<typeof enrichSourceWithConfig>[0],
+      );
 
       logger.info(`Conversion job created: ${fileName}`);
       return { ...(job as unknown as ConversionJob), source: enrichedSource };
@@ -177,10 +181,7 @@ class ConversionService {
       logger.info(`Job completed: ${job.fileName}`);
       return completedJob as unknown as ConversionJob;
     } catch (error) {
-      logger.error(
-        { err: error, fileName: job?.fileName, jobId },
-        'Job failed',
-      );
+      logger.error({ err: error, fileName: job?.fileName, jobId }, 'Job failed');
 
       await prisma.conversionJob
         .update({

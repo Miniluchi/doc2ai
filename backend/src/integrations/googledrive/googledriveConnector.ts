@@ -27,8 +27,8 @@ class GoogleDriveConnector extends DriveConnector {
     try {
       this.validateConfig();
 
-      const { clientId, clientSecret, refreshToken } = (this.config
-        .credentials as unknown) as GoogleCredentials;
+      const { clientId, clientSecret, refreshToken } = this.config
+        .credentials as unknown as GoogleCredentials;
 
       const tokenUrl = 'https://oauth2.googleapis.com/token';
 
@@ -81,7 +81,9 @@ class GoogleDriveConnector extends DriveConnector {
         },
       };
     } catch (error) {
-      const err = error as Error & { originalError?: { message?: string; response?: { data?: unknown; message?: string } } };
+      const err = error as Error & {
+        originalError?: { message?: string; response?: { data?: unknown; message?: string } };
+      };
       return {
         success: false,
         message: err.message,
@@ -113,12 +115,17 @@ class GoogleDriveConnector extends DriveConnector {
 
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/files`, { params });
 
-      const folders = (response.data as { files?: Array<{
-        id: string;
-        name: string;
-        modifiedTime: string;
-        parents: unknown;
-      }> }).files ?? [];
+      const folders =
+        (
+          response.data as {
+            files?: Array<{
+              id: string;
+              name: string;
+              modifiedTime: string;
+              parents: unknown;
+            }>;
+          }
+        ).files ?? [];
 
       return folders.map((folder) => ({
         id: folder.id,
@@ -151,16 +158,21 @@ class GoogleDriveConnector extends DriveConnector {
 
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/files`, { params });
 
-      const files = (response.data as { files?: Array<{
-        id: string;
-        name: string;
-        size?: string;
-        modifiedTime: string;
-        mimeType: string;
-        webViewLink?: string;
-        md5Checksum?: string;
-        parents?: string[];
-      }> }).files ?? [];
+      const files =
+        (
+          response.data as {
+            files?: Array<{
+              id: string;
+              name: string;
+              size?: string;
+              modifiedTime: string;
+              mimeType: string;
+              webViewLink?: string;
+              md5Checksum?: string;
+              parents?: string[];
+            }>;
+          }
+        ).files ?? [];
 
       return files.map((file) =>
         this.normalizeFileInfo({
@@ -195,7 +207,9 @@ class GoogleDriveConnector extends DriveConnector {
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/files`, { params });
 
       const files = (response.data as { files?: Record<string, unknown>[] }).files ?? [];
-      return files.map((file) => this.normalizeFileInfo(file as Parameters<typeof this.normalizeFileInfo>[0]));
+      return files.map((file) =>
+        this.normalizeFileInfo(file as Parameters<typeof this.normalizeFileInfo>[0]),
+      );
     } catch (error) {
       this.handleApiError(error, 'searchFiles');
     }
@@ -222,18 +236,15 @@ class GoogleDriveConnector extends DriveConnector {
       if (fileInfo.mimeType.startsWith('application/vnd.google-apps.')) {
         const conversionMap: Record<string, { mimeType: string; extension: string }> = {
           'application/vnd.google-apps.document': {
-            mimeType:
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             extension: '.docx',
           },
           'application/vnd.google-apps.spreadsheet': {
-            mimeType:
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             extension: '.xlsx',
           },
           'application/vnd.google-apps.presentation': {
-            mimeType:
-              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             extension: '.pptx',
           },
         };
@@ -363,7 +374,8 @@ class GoogleDriveConnector extends DriveConnector {
   override validateConfig(): boolean {
     super.validateConfig();
 
-    const { clientId, clientSecret, refreshToken } = ((this.config.credentials as unknown) as GoogleCredentials) ?? {};
+    const { clientId, clientSecret, refreshToken } =
+      (this.config.credentials as unknown as GoogleCredentials) ?? {};
 
     if (!clientId || !clientSecret || !refreshToken) {
       throw new Error('Google Drive requires clientId, clientSecret, and refreshToken');

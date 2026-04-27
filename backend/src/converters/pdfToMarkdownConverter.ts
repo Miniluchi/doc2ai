@@ -33,10 +33,7 @@ class PdfToMarkdownConverter extends BaseConverter {
 
       parser = new PDFParse({ data: dataBuffer });
 
-      const [textResult, infoResult] = await Promise.all([
-        parser.getText(),
-        parser.getInfo(),
-      ]);
+      const [textResult, infoResult] = await Promise.all([parser.getText(), parser.getInfo()]);
 
       this.updateProgress(60, 'Converting to Markdown');
 

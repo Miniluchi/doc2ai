@@ -35,8 +35,8 @@ class SharePointConnector extends DriveConnector {
     try {
       this.validateConfig();
 
-      const { clientId, clientSecret, tenantId } = (this.config
-        .credentials as unknown) as SharePointCredentials;
+      const { clientId, clientSecret, tenantId } = this.config
+        .credentials as unknown as SharePointCredentials;
 
       const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
@@ -101,7 +101,9 @@ class SharePointConnector extends DriveConnector {
         },
       };
     } catch (error) {
-      const err = error as Error & { originalError?: { message?: string; response?: { data?: unknown; message?: string } } };
+      const err = error as Error & {
+        originalError?: { message?: string; response?: { data?: unknown; message?: string } };
+      };
       return {
         success: false,
         message: err.message,
@@ -110,10 +112,7 @@ class SharePointConnector extends DriveConnector {
     }
   }
 
-  override async listFiles(
-    folderPath = '/',
-    limit: number | null = null,
-  ): Promise<FileInfo[]> {
+  override async listFiles(folderPath = '/', limit: number | null = null): Promise<FileInfo[]> {
     try {
       await this.ensureAuthenticated();
 
@@ -143,14 +142,19 @@ class SharePointConnector extends DriveConnector {
 
       const response = await this.makeAuthenticatedRequest(endpoint, { params });
 
-      const files = (response.data as { value?: Array<{
-        id: string;
-        name: string;
-        size?: number;
-        lastModifiedDateTime: string;
-        webUrl?: string;
-        '@microsoft.graph.downloadUrl'?: string;
-      }> }).value ?? [];
+      const files =
+        (
+          response.data as {
+            value?: Array<{
+              id: string;
+              name: string;
+              size?: number;
+              lastModifiedDateTime: string;
+              webUrl?: string;
+              '@microsoft.graph.downloadUrl'?: string;
+            }>;
+          }
+        ).value ?? [];
 
       return files.map((file) =>
         this.normalizeFileInfo({
@@ -274,7 +278,7 @@ class SharePointConnector extends DriveConnector {
     super.validateConfig();
 
     const { clientId, clientSecret, tenantId } =
-      ((this.config.credentials as unknown) as SharePointCredentials) ?? {};
+      (this.config.credentials as unknown as SharePointCredentials) ?? {};
 
     if (!clientId || !clientSecret || !tenantId) {
       throw new Error('SharePoint requires clientId, clientSecret, and tenantId');

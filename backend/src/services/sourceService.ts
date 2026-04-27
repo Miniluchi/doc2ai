@@ -93,9 +93,7 @@ class SourceService {
 
       const encryptedConfig: SourceConfig = {
         ...sourceConfig,
-        credentials: sourceConfig.credentials
-          ? encryptCredentials(sourceConfig.credentials)
-          : null,
+        credentials: sourceConfig.credentials ? encryptCredentials(sourceConfig.credentials) : null,
       };
 
       const source = await prisma.source.create({
@@ -349,7 +347,9 @@ class SourceService {
         if (isGoogleDoc || isGoogleSheet || isGoogleSlide) return true;
 
         return extensionsArray.some((ext) => {
-          const extension = ext.toLowerCase().startsWith('.') ? ext.toLowerCase() : `.${ext.toLowerCase()}`;
+          const extension = ext.toLowerCase().startsWith('.')
+            ? ext.toLowerCase()
+            : `.${ext.toLowerCase()}`;
           return fileName.endsWith(extension);
         });
       });
@@ -408,12 +408,7 @@ class SourceService {
 
           const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
-          const job = await conversionService.createJob(
-            source.id,
-            file.name,
-            tempPath,
-            file.size,
-          );
+          const job = await conversionService.createJob(source.id, file.name, tempPath, file.size);
 
           logger.info(`Created conversion job for: ${file.name}`);
 

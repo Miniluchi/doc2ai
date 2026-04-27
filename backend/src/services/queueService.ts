@@ -20,14 +20,18 @@ class QueueService {
   constructor() {
     this.conversionService = new ConversionService();
 
-    this.conversionQueue = new Bull<ConversionJobData>('document-conversion', config.redisUrl ?? '', {
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
-        removeOnComplete: 100,
-        removeOnFail: 200,
+    this.conversionQueue = new Bull<ConversionJobData>(
+      'document-conversion',
+      config.redisUrl ?? '',
+      {
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: 100,
+          removeOnFail: 200,
+        },
       },
-    });
+    );
 
     this.setupEventHandlers();
   }
@@ -116,7 +120,14 @@ class QueueService {
         this.conversionQueue.getDelayedCount(),
       ]);
 
-      return { waiting, active, completed, failed, delayed, total: waiting + active + completed + failed + delayed };
+      return {
+        waiting,
+        active,
+        completed,
+        failed,
+        delayed,
+        total: waiting + active + completed + failed + delayed,
+      };
     } catch (error) {
       logger.error({ err: error }, 'Error fetching stats');
       throw error;

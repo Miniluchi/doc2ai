@@ -34,7 +34,8 @@ export function validateSourceData(req: Request, res: Response, next: NextFuncti
 
     const p = typeof platform === 'string' ? platform : '';
     if (p === 'sharepoint' || p === 'onedrive') {
-      const { clientId, clientSecret, tenantId } = (config.credentials as Record<string, unknown>) ?? {};
+      const { clientId, clientSecret, tenantId } =
+        (config.credentials as Record<string, unknown>) ?? {};
       if (!clientId) errors.push('Microsoft clientId is required');
       if (!clientSecret) errors.push('Microsoft clientSecret is required');
       if (!tenantId) errors.push('Microsoft tenantId is required');
@@ -44,7 +45,8 @@ export function validateSourceData(req: Request, res: Response, next: NextFuncti
     }
 
     if (p === 'googledrive') {
-      const { clientId, clientSecret, refreshToken } = (config.credentials as Record<string, unknown>) ?? {};
+      const { clientId, clientSecret, refreshToken } =
+        (config.credentials as Record<string, unknown>) ?? {};
       if (!clientId) errors.push('Google clientId is required');
       if (!clientSecret) errors.push('Google clientSecret is required');
       if (!refreshToken) errors.push('Google refreshToken is required');

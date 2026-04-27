@@ -55,10 +55,7 @@ export function validateDestinationPath(destination: unknown): string {
   return trimmed;
 }
 
-export function getValidatedDestination(
-  cfg: SourceConfig,
-  fallback: string = 'default',
-): string {
+export function getValidatedDestination(cfg: SourceConfig, fallback: string = 'default'): string {
   const destination = cfg.destination ?? fallback;
   return validateDestinationPath(destination);
 }

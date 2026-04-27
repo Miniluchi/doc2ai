@@ -5,7 +5,9 @@ import path from 'node:path';
 import logger from '../config/logger.js';
 import type { ConversionResult } from '../types/domain.js';
 
-interface MammothImageConverter { __mammothBrand: 'ImageConverter' }
+interface MammothImageConverter {
+  __mammothBrand: 'ImageConverter';
+}
 interface MammothImage {
   contentType: string;
   read(): Promise<Buffer>;
@@ -23,9 +25,19 @@ interface MammothResult {
   messages: Array<{ type: string; message: string }>;
 }
 interface MammothModule {
-  convertToHtml(input: { path: string } | { buffer: Buffer }, options?: MammothOptions): Promise<MammothResult>;
-  convertToMarkdown(input: { path: string } | { buffer: Buffer }, options?: MammothOptions): Promise<MammothResult>;
-  images: { imgElement(fn: (img: MammothImage) => Promise<{ src: string; alt?: string }>): MammothImageConverter };
+  convertToHtml(
+    input: { path: string } | { buffer: Buffer },
+    options?: MammothOptions,
+  ): Promise<MammothResult>;
+  convertToMarkdown(
+    input: { path: string } | { buffer: Buffer },
+    options?: MammothOptions,
+  ): Promise<MammothResult>;
+  images: {
+    imgElement(
+      fn: (img: MammothImage) => Promise<{ src: string; alt?: string }>,
+    ): MammothImageConverter;
+  };
 }
 
 const _require = createRequire(import.meta.url);

@@ -45,7 +45,9 @@ class MonitoringService {
     const decryptedConfig: SourceConfig = {
       ...parsedConfig,
       credentials: parsedConfig.credentials
-        ? decryptCredentials(parsedConfig.credentials as string) as string | Record<string, string>
+        ? (decryptCredentials(parsedConfig.credentials as string) as
+            | string
+            | Record<string, string>)
         : null,
     };
 
@@ -337,12 +339,7 @@ class MonitoringService {
 
       const tempPath = await connector.downloadFile(file.id, config.tempPath);
 
-      const job = await this.conversionService.createJob(
-        sourceId,
-        file.name,
-        tempPath,
-        file.size,
-      );
+      const job = await this.conversionService.createJob(sourceId, file.name, tempPath, file.size);
 
       await queueService.enqueueConversion(job.id, file.name);
 
@@ -379,9 +376,10 @@ class MonitoringService {
         include: { source: { select: { name: true } } },
       });
 
-      const lastCheck = Array.from(this.activeMonitors.values())
-        .map((m) => m.lastCheck)
-        .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+      const lastCheck =
+        Array.from(this.activeMonitors.values())
+          .map((m) => m.lastCheck)
+          .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 
       return {
         isRunning: this.isRunning,

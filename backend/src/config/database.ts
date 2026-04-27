@@ -10,9 +10,7 @@ function getPrismaClient(): PrismaClient {
     prisma = new PrismaClient({
       adapter,
       log:
-        process.env['NODE_ENV'] === 'development'
-          ? ['query', 'info', 'warn', 'error']
-          : ['error'],
+        process.env['NODE_ENV'] === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
     });
   }
   return prisma;

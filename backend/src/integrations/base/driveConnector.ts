@@ -89,9 +89,11 @@ abstract class DriveConnector {
       );
     }
 
-    const enrichedError = new Error(
-      `${operation} failed: ${(error as Error).message}`,
-    ) as Error & { originalError: unknown; operation: string; connector: string };
+    const enrichedError = new Error(`${operation} failed: ${(error as Error).message}`) as Error & {
+      originalError: unknown;
+      operation: string;
+      connector: string;
+    };
 
     enrichedError.originalError = error;
     enrichedError.operation = operation;

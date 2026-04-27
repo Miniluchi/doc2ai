@@ -67,7 +67,9 @@ class SourceController {
         return;
       }
 
-      const source = await sourceService.createSource(req.body as Parameters<typeof sourceService.createSource>[0]);
+      const source = await sourceService.createSource(
+        req.body as Parameters<typeof sourceService.createSource>[0],
+      );
 
       res.status(201).json({ success: true, data: source, message: 'Source created successfully' });
     } catch (error) {
@@ -83,7 +85,10 @@ class SourceController {
   async updateSource(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const source = await sourceService.updateSource(id!, req.body as Parameters<typeof sourceService.updateSource>[1]);
+      const source = await sourceService.updateSource(
+        id!,
+        req.body as Parameters<typeof sourceService.updateSource>[1],
+      );
 
       res.json({ success: true, data: source, message: 'Source updated successfully' });
     } catch (error) {
