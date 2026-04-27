@@ -4,7 +4,6 @@ import MonitoringController from '../controllers/monitoringController.js';
 const router = express.Router();
 const monitoringController = new MonitoringController();
 
-// Routes pour le monitoring
 router.get('/status', monitoringController.getStatus.bind(monitoringController));
 router.get('/health', monitoringController.healthCheck.bind(monitoringController));
 router.get('/logs', monitoringController.getLogs.bind(monitoringController));

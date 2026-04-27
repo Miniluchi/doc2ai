@@ -4,7 +4,6 @@ import ConversionController from '../controllers/conversionController.js';
 const router = express.Router();
 const conversionController = new ConversionController();
 
-// Routes pour les conversions
 router.get('/stats', conversionController.getStats.bind(conversionController));
 router.post('/cleanup', conversionController.cleanupJobs.bind(conversionController));
 router.get('/', conversionController.getAllJobs.bind(conversionController));

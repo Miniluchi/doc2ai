@@ -6,14 +6,12 @@ import authRouter from './auth.js';
 
 const router = express.Router();
 
-// API routes
 router.use('/sources', sourcesRouter);
 router.use('/conversions', conversionsRouter);
 router.use('/monitoring', monitoringRouter);
 router.use('/auth', authRouter);
 
-// Health check route
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
   res.json({
     success: true,
     message: 'Doc2AI API is running',
@@ -22,8 +20,7 @@ router.get('/health', (req, res) => {
   });
 });
 
-// API info route
-router.get('/', (req, res) => {
+router.get('/', (_req, res) => {
   res.json({
     name: 'Doc2AI Backend API',
     version: '1.0.0',

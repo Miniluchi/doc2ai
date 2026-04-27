@@ -13,12 +13,13 @@ import { sanitizeInput } from './middleware/validation.js';
 import monitoringService from './services/monitoringService.js';
 import queueService from './services/queueService.js';
 import fs from 'fs-extra';
+import type { Server } from 'node:http';
 
 const app = express();
 
 app.set('trust proxy', 1);
 
-async function setupApp() {
+async function setupApp(): Promise<typeof app> {
   logger.info('Starting Doc2AI Backend...');
 
   await fs.ensureDir(config.storagePath);
@@ -71,18 +72,14 @@ async function setupApp() {
 
   app.use('/api', apiRoutes);
 
-  app.get('/', (req, res) => {
+  app.get('/', (_req, res) => {
     res.json({
       name: 'Doc2AI Backend',
       version: '1.0.0',
       status: 'running',
       timestamp: new Date().toISOString(),
       environment: config.nodeEnv,
-      endpoints: {
-        api: '/api',
-        health: '/api/health',
-        docs: '/api',
-      },
+      endpoints: { api: '/api', health: '/api/health', docs: '/api' },
     });
   });
 
@@ -93,12 +90,12 @@ async function setupApp() {
   return app;
 }
 
-async function startServer() {
+async function startServer(): Promise<Server> {
   try {
     await initializeDatabase();
     await setupApp();
 
-    const externalPort = process.env.EXTERNAL_PORT || config.port;
+    const externalPort = process.env['EXTERNAL_PORT'] ?? String(config.port);
     const server = app.listen(config.port, () => {
       logger.info(
         { port: externalPort, env: config.nodeEnv },
@@ -123,7 +120,7 @@ async function startServer() {
       logger.warn({ err: error }, 'Monitoring service failed to start');
     }
 
-    const gracefulShutdown = async (signal) => {
+    const gracefulShutdown = async (signal: string): Promise<void> => {
       logger.info({ signal }, 'Graceful shutdown...');
 
       if (monitoringService.isRunning) {
@@ -146,8 +143,8 @@ async function startServer() {
       }, 10000);
     };
 
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
 
     process.on('unhandledRejection', (reason, promise) => {
       logger.error({ reason, promise }, 'Unhandled Rejection');
@@ -165,8 +162,9 @@ async function startServer() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  await startServer();
+const mainFile = process.argv[1];
+if (mainFile !== undefined && import.meta.url === `file://${mainFile}`) {
+  void startServer();
 }
 
 export default app;
