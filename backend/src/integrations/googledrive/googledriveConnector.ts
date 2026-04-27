@@ -1,55 +1,63 @@
 import DriveConnector from '../base/driveConnector.js';
 import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import fs from 'fs-extra';
-import path from 'path';
+import path from 'node:path';
 import logger from '../../config/logger.js';
+import type { FileInfo, ConnectionTestResult, SourceConfig } from '../../types/domain.js';
+
+interface GoogleCredentials {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+}
 
 class GoogleDriveConnector extends DriveConnector {
-  constructor(config) {
+  private accessToken: string | null;
+  private tokenExpiry: number | null;
+  private readonly baseUrl = 'https://www.googleapis.com/drive/v3';
+
+  constructor(config: SourceConfig) {
     super(config);
     this.accessToken = null;
     this.tokenExpiry = null;
-    this.baseUrl = 'https://www.googleapis.com/drive/v3';
   }
 
-  async authenticate() {
+  override async authenticate(): Promise<boolean> {
     try {
       this.validateConfig();
 
-      const { clientId, clientSecret, refreshToken } = this.config.credentials;
+      const { clientId, clientSecret, refreshToken } = this.config
+        .credentials as GoogleCredentials;
 
       const tokenUrl = 'https://oauth2.googleapis.com/token';
 
-      const params = {
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      };
-
       this.log('authenticate', { clientId: clientId.substring(0, 12) + '...' });
 
-      const response = await axios.post(tokenUrl, params, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+      const response = await axios.post(
+        tokenUrl,
+        {
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
         },
-      });
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
 
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = Date.now() + response.data.expires_in * 1000;
+      const data = response.data as { access_token: string; expires_in: number };
+      this.accessToken = data.access_token;
+      this.tokenExpiry = Date.now() + data.expires_in * 1000;
       this.isAuthenticated = true;
 
-      this.log('authenticate', {
-        success: true,
-        tokenExpiry: new Date(this.tokenExpiry),
-      });
+      this.log('authenticate', { success: true, tokenExpiry: new Date(this.tokenExpiry) });
       return true;
     } catch (error) {
       this.handleApiError(error, 'authenticate');
     }
   }
 
-  async testConnection() {
+  override async testConnection(): Promise<ConnectionTestResult> {
     try {
       await this.authenticate();
 
@@ -57,7 +65,10 @@ class GoogleDriveConnector extends DriveConnector {
         'https://www.googleapis.com/drive/v3/about?fields=user,storageQuota',
       );
 
-      const userInfo = response.data;
+      const userInfo = response.data as {
+        user?: { emailAddress?: string };
+        storageQuota?: { usage?: string };
+      };
 
       return {
         success: true,
@@ -70,17 +81,25 @@ class GoogleDriveConnector extends DriveConnector {
         },
       };
     } catch (error) {
+      const err = error as Error & { originalError?: { response?: { data?: unknown; message?: string } } };
       return {
         success: false,
-        message: error.message,
-        details: {
-          error: error.originalError?.response?.data || error.originalError?.message,
-        },
+        message: err.message,
+        details: { error: err.originalError?.response?.data ?? err.originalError?.message },
       };
     }
   }
 
-  async listFolders(folderId = 'root') {
+  async listFolders(folderId = 'root'): Promise<
+    Array<{
+      id: string;
+      name: string;
+      path: string;
+      modifiedTime: string;
+      parents: unknown;
+      type: string;
+    }>
+  > {
     try {
       await this.ensureAuthenticated();
 
@@ -94,7 +113,12 @@ class GoogleDriveConnector extends DriveConnector {
 
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/files`, { params });
 
-      const folders = response.data.files || [];
+      const folders = (response.data as { files?: Array<{
+        id: string;
+        name: string;
+        modifiedTime: string;
+        parents: unknown;
+      }> }).files ?? [];
 
       return folders.map((folder) => ({
         id: folder.id,
@@ -109,32 +133,41 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  async listFiles(folderId = 'root', limit = null) {
+  override async listFiles(folderId = 'root', limit: number | null = null): Promise<FileInfo[]> {
     try {
       await this.ensureAuthenticated();
 
-      const params = {
+      const params: Record<string, unknown> = {
         q: `'${folderId}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'`,
         fields: 'files(id,name,size,modifiedTime,mimeType,webViewLink,md5Checksum,parents)',
         orderBy: 'modifiedTime desc',
       };
 
       if (limit) {
-        params.pageSize = limit;
+        params['pageSize'] = limit;
       }
 
       this.log('listFiles', { folderId, limit });
 
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/files`, { params });
 
-      const files = response.data.files || [];
+      const files = (response.data as { files?: Array<{
+        id: string;
+        name: string;
+        size?: string;
+        modifiedTime: string;
+        mimeType: string;
+        webViewLink?: string;
+        md5Checksum?: string;
+        parents?: string[];
+      }> }).files ?? [];
 
       return files.map((file) =>
         this.normalizeFileInfo({
           id: file.id,
           name: file.name,
           path: `/${file.name}`,
-          size: parseInt(file.size) || 0,
+          size: parseInt(file.size ?? '0') || 0,
           modifiedTime: file.modifiedTime,
           checksum: file.md5Checksum,
           mimeType: file.mimeType,
@@ -147,7 +180,7 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  async searchFiles(query, limit = 50) {
+  async searchFiles(query: string, limit = 50): Promise<FileInfo[]> {
     try {
       await this.ensureAuthenticated();
 
@@ -161,14 +194,14 @@ class GoogleDriveConnector extends DriveConnector {
 
       const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/files`, { params });
 
-      const files = response.data.files || [];
-      return files.map((file) => this.normalizeFileInfo(file));
+      const files = (response.data as { files?: Record<string, unknown>[] }).files ?? [];
+      return files.map((file) => this.normalizeFileInfo(file as Parameters<typeof this.normalizeFileInfo>[0]));
     } catch (error) {
       this.handleApiError(error, 'searchFiles');
     }
   }
 
-  async downloadFile(fileId, destinationDir) {
+  override async downloadFile(fileId: string, destinationDir: string): Promise<string> {
     try {
       await this.ensureAuthenticated();
 
@@ -178,7 +211,7 @@ class GoogleDriveConnector extends DriveConnector {
         `${this.baseUrl}/files/${fileId}?fields=name,size,mimeType`,
       );
 
-      const fileInfo = fileInfoResponse.data;
+      const fileInfo = fileInfoResponse.data as { name: string; size?: string; mimeType: string };
 
       await fs.ensureDir(destinationDir);
 
@@ -187,17 +220,20 @@ class GoogleDriveConnector extends DriveConnector {
 
       // Handle Google Docs native formats (export required)
       if (fileInfo.mimeType.startsWith('application/vnd.google-apps.')) {
-        const conversionMap = {
+        const conversionMap: Record<string, { mimeType: string; extension: string }> = {
           'application/vnd.google-apps.document': {
-            mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            mimeType:
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             extension: '.docx',
           },
           'application/vnd.google-apps.spreadsheet': {
-            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            mimeType:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             extension: '.xlsx',
           },
           'application/vnd.google-apps.presentation': {
-            mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            mimeType:
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             extension: '.pptx',
           },
         };
@@ -218,14 +254,11 @@ class GoogleDriveConnector extends DriveConnector {
       const filePath = path.join(destinationDir, fileName);
       const writer = fs.createWriteStream(filePath);
 
-      response.data.pipe(writer);
+      (response.data as NodeJS.ReadableStream).pipe(writer);
 
       return new Promise((resolve, reject) => {
         writer.on('finish', () => {
-          this.log('downloadFile', {
-            completed: filePath,
-            originalSize: fileInfo.size,
-          });
+          this.log('downloadFile', { completed: filePath, originalSize: fileInfo.size });
           resolve(filePath);
         });
         writer.on('error', reject);
@@ -235,29 +268,46 @@ class GoogleDriveConnector extends DriveConnector {
     }
   }
 
-  async watchForChanges(folderId, callback) {
+  override async watchForChanges(
+    folderId: string,
+    callback: (files: FileInfo[]) => void,
+  ): Promise<() => void> {
     this.log('watchForChanges', {
       folderId,
       note: 'Using polling approach - push notifications require webhook setup',
     });
 
-    let pageToken = null;
+    let pageToken: string | null = null;
 
-    const pollChanges = async () => {
+    const pollChanges = async (): Promise<void> => {
       try {
-        const params = {
+        const params: Record<string, unknown> = {
           fields:
             'nextPageToken,newStartPageToken,changes(fileId,file(id,name,parents,modifiedTime,trashed))',
           includeRemoved: false,
         };
 
         if (pageToken) {
-          params.pageToken = pageToken;
+          params['pageToken'] = pageToken;
         }
 
         const response = await this.makeAuthenticatedRequest(`${this.baseUrl}/changes`, { params });
 
-        const changes = response.data.changes || [];
+        const data = response.data as {
+          changes?: Array<{
+            file?: {
+              id: string;
+              name: string;
+              parents?: string[];
+              modifiedTime: string;
+              trashed?: boolean;
+            };
+          }>;
+          nextPageToken?: string;
+          newStartPageToken?: string;
+        };
+
+        const changes = data.changes ?? [];
 
         const relevantChanges = changes.filter((change) => {
           const file = change.file;
@@ -266,11 +316,13 @@ class GoogleDriveConnector extends DriveConnector {
 
         if (relevantChanges.length > 0) {
           this.log('watchForChanges', { changes: relevantChanges.length });
-          const changedFiles = relevantChanges.map((change) => this.normalizeFileInfo(change.file));
+          const changedFiles = relevantChanges.map((change) =>
+            this.normalizeFileInfo(change.file as Parameters<typeof this.normalizeFileInfo>[0]),
+          );
           callback(changedFiles);
         }
 
-        pageToken = response.data.nextPageToken || response.data.newStartPageToken;
+        pageToken = data.nextPageToken ?? data.newStartPageToken ?? null;
       } catch (error) {
         logger.error({ err: error }, 'Error in watchForChanges polling');
       }
@@ -286,7 +338,10 @@ class GoogleDriveConnector extends DriveConnector {
     };
   }
 
-  async makeAuthenticatedRequest(url, config = {}) {
+  private async makeAuthenticatedRequest(
+    url: string,
+    config: AxiosRequestConfig = {},
+  ): Promise<ReturnType<typeof axios>> {
     await this.ensureAuthenticated();
 
     return axios({
@@ -299,16 +354,16 @@ class GoogleDriveConnector extends DriveConnector {
     });
   }
 
-  async ensureAuthenticated() {
-    if (!this.isAuthenticated || Date.now() >= this.tokenExpiry - 30000) {
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.isAuthenticated || Date.now() >= (this.tokenExpiry ?? 0) - 30000) {
       await this.authenticate();
     }
   }
 
-  validateConfig() {
+  override validateConfig(): boolean {
     super.validateConfig();
 
-    const { clientId, clientSecret, refreshToken } = this.config.credentials;
+    const { clientId, clientSecret, refreshToken } = (this.config.credentials as GoogleCredentials) ?? {};
 
     if (!clientId || !clientSecret || !refreshToken) {
       throw new Error('Google Drive requires clientId, clientSecret, and refreshToken');
@@ -317,7 +372,7 @@ class GoogleDriveConnector extends DriveConnector {
     return true;
   }
 
-  async cleanup() {
+  override async cleanup(): Promise<void> {
     this.accessToken = null;
     this.tokenExpiry = null;
     this.isAuthenticated = false;
