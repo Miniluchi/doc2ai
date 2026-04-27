@@ -1,27 +1,28 @@
 import logger from '../config/logger.js';
+import type { Source, SourceConfig, ParsedSource } from '../types/domain.js';
 
-export function parseSourceConfig(source) {
-  if (!source || !source.config) {
+export function parseSourceConfig(source: { config: unknown }): SourceConfig {
+  if (!source || source.config === null || source.config === undefined) {
     throw new Error('Source configuration is missing');
   }
 
   if (typeof source.config === 'object') {
-    return source.config;
+    return source.config as SourceConfig;
   }
 
   if (typeof source.config === 'string') {
     try {
-      return JSON.parse(source.config);
+      return JSON.parse(source.config) as SourceConfig;
     } catch (error) {
       logger.error({ err: error }, 'Failed to parse source config JSON');
-      throw new Error(`Invalid source configuration JSON: ${error.message}`);
+      throw new Error(`Invalid source configuration JSON: ${(error as Error).message}`);
     }
   }
 
   throw new Error('Source configuration must be an object or valid JSON string');
 }
 
-export function validateDestinationPath(destination) {
+export function validateDestinationPath(destination: unknown): string {
   if (!destination || typeof destination !== 'string') {
     throw new Error('Destination must be a non-empty string');
   }
@@ -54,24 +55,23 @@ export function validateDestinationPath(destination) {
   return trimmed;
 }
 
-export function getValidatedDestination(config, fallback = 'default') {
-  const destination = config.destination || fallback;
+export function getValidatedDestination(
+  cfg: SourceConfig,
+  fallback: string = 'default',
+): string {
+  const destination = cfg.destination ?? fallback;
   return validateDestinationPath(destination);
 }
 
-export function enrichSourceWithConfig(source) {
+export function enrichSourceWithConfig(source: Source): ParsedSource {
   try {
     const parsedConfig = parseSourceConfig(source);
 
-    // Valider la destination si elle existe
     if (parsedConfig.destination) {
       parsedConfig.destination = validateDestinationPath(parsedConfig.destination);
     }
 
-    return {
-      ...source,
-      config: parsedConfig,
-    };
+    return { ...source, config: parsedConfig };
   } catch (error) {
     logger.error({ err: error, sourceId: source.id }, 'Failed to enrich source');
     throw error;
