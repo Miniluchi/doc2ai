@@ -1,4 +1,6 @@
-import getPrismaClient from '../config/database.js';
+import getDb from '../config/database.js';
+import { sources, syncLogs, convertedFiles } from '../db/schema.js';
+import { eq, and, count, desc } from 'drizzle-orm';
 import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
 import ConversionService from './conversionService.js';
 import queueService from './queueService.js';
@@ -10,7 +12,7 @@ import logger from '../config/logger.js';
 import type { Source, SourceConfig, SyncLog, FileInfo } from '../types/domain.js';
 import type DriveConnector from '../integrations/base/driveConnector.js';
 
-const prisma = getPrismaClient();
+const db = getDb();
 
 interface ActiveMonitor {
   source: Source;
@@ -63,7 +65,7 @@ class MonitoringService {
 
       logger.info('Starting monitoring service...');
 
-      const activeSources = await prisma.source.findMany({ where: { status: 'active' } });
+      const activeSources = await db.select().from(sources).where(eq(sources.status, 'active'));
 
       for (const source of activeSources) {
         await this.startSourceMonitoring(source as unknown as Source);
@@ -120,7 +122,6 @@ class MonitoringService {
       logger.info(`Starting monitoring for: ${source.name}`);
 
       const { decryptedConfig } = this._parseAndDecryptConfig(source);
-
       const connector = DriveConnectorFactory.createConnector(source.platform, decryptedConfig);
 
       const connectionTest = await connector.testConnection();
@@ -130,25 +131,21 @@ class MonitoringService {
 
       this.activeMonitors.set(source.id, { source, connector, lastCheck: new Date() });
 
-      await prisma.syncLog.create({
-        data: {
-          sourceId: source.id,
-          action: 'monitor_start',
-          status: 'success',
-          message: 'Monitoring started successfully',
-        },
+      await db.insert(syncLogs).values({
+        sourceId: source.id,
+        action: 'monitor_start',
+        status: 'success',
+        message: 'Monitoring started successfully',
       });
     } catch (error) {
       logger.error({ err: error, source: source.name }, 'Failed to start monitoring for source');
 
-      await prisma.syncLog.create({
-        data: {
-          sourceId: source.id,
-          action: 'monitor_start',
-          status: 'error',
-          message: (error as Error).message,
-          details: JSON.stringify({ error: (error as Error).stack }),
-        },
+      await db.insert(syncLogs).values({
+        sourceId: source.id,
+        action: 'monitor_start',
+        status: 'error',
+        message: (error as Error).message,
+        details: JSON.stringify({ error: (error as Error).stack }),
       });
     }
   }
@@ -166,13 +163,11 @@ class MonitoringService {
 
       this.activeMonitors.delete(sourceId);
 
-      await prisma.syncLog.create({
-        data: {
-          sourceId,
-          action: 'monitor_stop',
-          status: 'success',
-          message: 'Monitoring stopped',
-        },
+      await db.insert(syncLogs).values({
+        sourceId,
+        action: 'monitor_stop',
+        status: 'success',
+        message: 'Monitoring stopped',
       });
     } catch (error) {
       logger.error({ err: error, sourceId }, 'Error stopping monitoring for source');
@@ -202,7 +197,9 @@ class MonitoringService {
     try {
       const monitor = this.activeMonitors.get(sourceId);
 
-      const source = await prisma.source.findUnique({ where: { id: sourceId } });
+      const source = await db.query.sources.findFirst({
+        where: eq(sources.id, sourceId),
+      });
 
       if (!source) {
         throw new Error('Source not found');
@@ -219,9 +216,7 @@ class MonitoringService {
         monitor.source = source as unknown as Source;
       } else {
         logger.info(`Manual sync for source: ${sourceId}`);
-
         const { decryptedConfig } = this._parseAndDecryptConfig(source as unknown as Source);
-
         connector = DriveConnectorFactory.createConnector(source.platform, decryptedConfig);
         await connector.authenticate();
       }
@@ -229,11 +224,9 @@ class MonitoringService {
       logger.info(`Syncing source: ${source.name}`);
 
       const { parsedConfig } = this._parseAndDecryptConfig(source as unknown as Source);
-
       const sourcePath = parsedConfig.sourcePath ?? '/';
       const files = await connector.listFiles(sourcePath);
 
-      // Normalize filters (may arrive as {"0":".docx",...} objects instead of arrays)
       const rawExtensions = parsedConfig.filters?.extensions;
       const supportedExtensions: string[] = Array.isArray(rawExtensions)
         ? rawExtensions
@@ -267,7 +260,6 @@ class MonitoringService {
         if (!hasValidExtension && !matchesGoogleType) return false;
 
         const isExcluded = excludePatterns.some((pattern) => file.name.match(new RegExp(pattern)));
-
         return !isExcluded;
       });
 
@@ -277,36 +269,29 @@ class MonitoringService {
         await this.processFileChange(sourceId, file, connector);
       }
 
-      await prisma.source.update({
-        where: { id: sourceId },
-        data: { lastSync: new Date() },
-      });
+      await db.update(sources).set({ lastSync: new Date() }).where(eq(sources.id, sourceId));
 
       if (monitor) {
         monitor.lastCheck = new Date();
       }
 
-      await prisma.syncLog.create({
-        data: {
-          sourceId,
-          action: 'sync',
-          status: 'success',
-          message: `Processed ${filteredFiles.length} files`,
-          details: JSON.stringify({ fileCount: filteredFiles.length }),
-        },
+      await db.insert(syncLogs).values({
+        sourceId,
+        action: 'sync',
+        status: 'success',
+        message: `Processed ${filteredFiles.length} files`,
+        details: JSON.stringify({ fileCount: filteredFiles.length }),
       });
     } catch (error) {
       logger.error({ err: error, sourceId }, 'Sync failed for source');
 
       try {
-        await prisma.syncLog.create({
-          data: {
-            sourceId,
-            action: 'sync',
-            status: 'error',
-            message: (error as Error).message,
-            details: JSON.stringify({ error: (error as Error).stack }),
-          },
+        await db.insert(syncLogs).values({
+          sourceId,
+          action: 'sync',
+          status: 'error',
+          message: (error as Error).message,
+          details: JSON.stringify({ error: (error as Error).stack }),
         });
       } catch (dbError) {
         logger.error({ err: dbError }, 'Failed to log sync error');
@@ -324,11 +309,11 @@ class MonitoringService {
     connector: DriveConnector,
   ): Promise<void> {
     try {
-      const existingFile = await prisma.convertedFile.findFirst({
-        where: {
-          originalPath: file.path,
-          platform: file.platform ?? 'unknown',
-        },
+      const existingFile = await db.query.convertedFiles.findFirst({
+        where: and(
+          eq(convertedFiles.originalPath, file.path),
+          eq(convertedFiles.platform, file.platform ?? 'unknown'),
+        ),
       });
 
       if (existingFile && existingFile.checksum === file.checksum) {
@@ -338,7 +323,6 @@ class MonitoringService {
       logger.info(`Processing file: ${file.name}`);
 
       const tempPath = await connector.downloadFile(file.id, config.tempPath);
-
       const job = await this.conversionService.createJob(sourceId, file.name, tempPath, file.size);
 
       await queueService.enqueueConversion(job.id, file.name);
@@ -347,14 +331,12 @@ class MonitoringService {
     } catch (error) {
       logger.error({ err: error, fileName: file.name }, 'Failed to process file');
 
-      await prisma.syncLog.create({
-        data: {
-          sourceId,
-          action: 'file_process',
-          status: 'error',
-          message: `Failed to process ${file.name}: ${(error as Error).message}`,
-          details: JSON.stringify({ fileName: file.name, error: (error as Error).stack }),
-        },
+      await db.insert(syncLogs).values({
+        sourceId,
+        action: 'file_process',
+        status: 'error',
+        message: `Failed to process ${file.name}: ${(error as Error).message}`,
+        details: JSON.stringify({ fileName: file.name, error: (error as Error).stack }),
       });
     }
   }
@@ -368,12 +350,17 @@ class MonitoringService {
   }> {
     try {
       const activeSourceCount = this.activeMonitors.size;
-      const totalSources = await prisma.source.count({ where: { status: 'active' } });
 
-      const recentLogs = await prisma.syncLog.findMany({
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        include: { source: { select: { name: true } } },
+      const activeRows = await db
+        .select({ total: count() })
+        .from(sources)
+        .where(eq(sources.status, 'active'));
+      const total = activeRows[0]?.total ?? 0;
+
+      const recentLogs = await db.query.syncLogs.findMany({
+        limit: 10,
+        orderBy: [desc(syncLogs.createdAt)],
+        with: { source: { columns: { name: true } } },
       });
 
       const lastCheck =
@@ -384,7 +371,7 @@ class MonitoringService {
       return {
         isRunning: this.isRunning,
         activeMonitors: activeSourceCount,
-        totalActiveSources: totalSources,
+        totalActiveSources: total,
         lastSync: lastCheck,
         recentLogs: recentLogs as unknown as SyncLog[],
       };
@@ -396,13 +383,11 @@ class MonitoringService {
 
   async getLogs(sourceId: string | null = null, limit = 50): Promise<SyncLog[]> {
     try {
-      const where = sourceId ? { sourceId } : {};
-
-      const logs = await prisma.syncLog.findMany({
-        where,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: { source: { select: { name: true, platform: true } } },
+      const logs = await db.query.syncLogs.findMany({
+        where: sourceId !== null ? eq(syncLogs.sourceId, sourceId) : undefined,
+        limit,
+        orderBy: [desc(syncLogs.createdAt)],
+        with: { source: { columns: { name: true, platform: true } } },
       });
 
       return logs as unknown as SyncLog[];

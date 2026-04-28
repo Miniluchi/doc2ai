@@ -23,16 +23,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Local Development (if needed)
 
-#### Backend (Node.js/Express)
+#### Backend (Bun/Express)
 
-- **Development**: `cd backend && npm run dev` (uses nodemon)
-- **Production**: `cd backend && npm start`
+- **Install**: `cd backend && bun install`
+- **Development**: `cd backend && bun run dev` (uses bun --watch)
+- **Production**: `cd backend && bun run start`
+- **Build**: `cd backend && bun run build` (tsc, outputs to dist/)
 - **Database**:
-  - `cd backend && npm run prisma:generate` (generate Prisma client)
-  - `cd backend && npm run prisma:migrate` (run migrations)
-  - `cd backend && npm run prisma:studio` (database GUI)
-- **Linting**: `cd backend && npm run lint`
-- **Testing**: `cd backend && npm test`
+  - `cd backend && bun run db:generate` (generate Drizzle migration)
+  - `cd backend && bun run db:migrate` (apply pending migrations)
+  - `cd backend && bun run db:studio` (database GUI)
+  - `cd backend && bun run db:push` (push schema directly, dev only)
+- **Linting**: `cd backend && bun run lint`
+- **Testing**: `cd backend && bun test`
 
 #### Frontend (React + TypeScript + Vite)
 
@@ -80,7 +83,9 @@ React SPA using modern TypeScript patterns:
 4. **Conversion Pipeline**: Jobs processed through appropriate converter
 5. **Storage**: Converted markdown stored locally, tracked in `ConvertedFile`
 
-### Database Schema (Prisma)
+### Database Schema (Drizzle ORM)
+
+Schema defined in `backend/src/db/schema.ts`. Migrations in `backend/drizzle/`.
 
 - **Source**: Cloud drive configurations and credentials (encrypted)
 - **ConversionJob**: Async conversion tasks with status tracking
@@ -115,7 +120,7 @@ React SPA using modern TypeScript patterns:
 ### Docker Features
 
 - **Multi-stage build** for frontend (build → nginx)
-- **Auto-migration** of DB on backend startup (`npx prisma db push`)
+- **Auto-migration** of DB on backend startup (Drizzle `migrate()` called in `initializeDatabase()`)
 - **Persistent volumes** for storage, temp files and database
 - **Network isolation** with `doc2ai-network`
 
@@ -131,7 +136,7 @@ BACKEND_PORT=3000
 FRONTEND_PORT=5173
 REDIS_PORT=6379
 
-# Database
+# Database (local dev — Docker containers use file:/app/data/dev.db)
 DATABASE_URL="file:./dev.db"
 
 # Security

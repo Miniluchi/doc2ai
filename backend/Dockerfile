@@ -1,41 +1,37 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
-
-RUN apk add --no-cache openssl
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY prisma ./prisma/
-COPY prisma.config.js ./
+COPY package.json bun.lock* ./
+COPY drizzle.config.ts ./
 COPY tsconfig.json ./
 
 # Install all deps (including devDeps for tsc)
-RUN npm ci
+RUN bun install --frozen-lockfile
 
 COPY src ./src/
+COPY drizzle ./drizzle/
 
 # Compile TypeScript
-RUN npm run build
+RUN bun run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:22-alpine
-
-RUN apk add --no-cache openssl
+FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY prisma ./prisma/
-COPY prisma.config.js ./
+COPY package.json bun.lock* ./
+COPY drizzle.config.ts ./
+COPY drizzle ./drizzle/
 
-# Production deps + Prisma client generation
-RUN npm ci --omit=dev \
-  && npx prisma generate \
-  && mkdir -p /app/storage /app/temp /app/prisma
+# Production deps only
+RUN bun install --frozen-lockfile --production \
+  && mkdir -p /app/storage /app/temp /app/data
 
 COPY --from=builder /app/dist ./dist/
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push && node dist/app.js"]
+# Migrations run in-process inside initializeDatabase() on startup
+CMD ["bun", "dist/app.js"]
