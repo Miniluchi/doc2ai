@@ -188,13 +188,13 @@ EXPORT_PATH="./exports"
 - **Container linting**:
   - Backend: `docker compose exec backend npm run lint`
   - Frontend: `docker compose exec frontend bun run lint`
-- **Database operations**: `docker compose exec backend npx prisma studio`
+- **Database operations**: `docker compose exec backend bun run db:studio`
 
 ### Local Development
 
 - Backend: Jest for unit tests (`npm test` in backend/)
 - Always run linting before committing: `npm run lint` (backend) and `bun run lint` (frontend)
-- Database changes require running `npm run prisma:migrate` in backend/
+- Database changes require running `bun run db:migrate` in backend/
 - Frontend builds must pass TypeScript compilation: `bun run build`
 
 ### Pre-commit Validation
@@ -257,11 +257,11 @@ EXPORT_PATH="./exports"
 
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3000/api
-- **Prisma Studio**: Accessible via `docker compose exec backend npx prisma studio`
+- **Drizzle Studio**: Accessible via `bun run db:studio` in backend/
 - **Redis**: localhost:6379 (if direct access needed)
 
 ### Debugging
 
 - **Real-time logs**: `docker compose logs -f [service_name]`
 - **Shell access**: `docker compose exec [service_name] sh`
-- **Database inspection**: `docker compose exec backend npx prisma studio`
+- **Database inspection**: `bun run db:studio` in backend/
