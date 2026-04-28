@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { conversionsApi, ApiError } from '../services/api';
 import type { ConversionJob, ConversionStats, PaginatedResponse } from '../types/api';
+import { useServerEvents } from './useServerEvents';
 
 export function useConversions(page = 1, limit = 20, status?: string) {
   const [data, setData] = useState<PaginatedResponse<ConversionJob> | null>(null);
@@ -88,6 +89,12 @@ export function useConversionStats() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  useServerEvents((event) => {
+    if (event.type === 'sync.completed') {
+      fetchStats();
+    }
+  });
 
   return {
     stats,

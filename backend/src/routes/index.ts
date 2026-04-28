@@ -3,6 +3,7 @@ import sourcesRouter from './sources.js';
 import conversionsRouter from './conversions.js';
 import monitoringRouter from './monitoring.js';
 import authRouter from './auth.js';
+import eventsRouter from './events.js';
 
 const router = express.Router();
 
@@ -10,6 +11,7 @@ router.use('/sources', sourcesRouter);
 router.use('/conversions', conversionsRouter);
 router.use('/monitoring', monitoringRouter);
 router.use('/auth', authRouter);
+router.use('/events', eventsRouter);
 
 router.get('/health', (_req, res) => {
   res.json({
@@ -30,6 +32,7 @@ router.get('/', (_req, res) => {
       conversions: '/api/conversions',
       monitoring: '/api/monitoring',
       auth: '/api/auth',
+      events: '/api/events',
     },
     documentation: 'https://github.com/yourusername/doc2ai',
   });

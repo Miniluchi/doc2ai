@@ -1,32 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { sourcesApi, ApiError } from '../services/api';
 import type { Source, CreateSourceRequest, SourceStats } from '../types/api';
+import { useServerEvents } from './useServerEvents';
 
-export function useSources() {
-  const [sources, setSources] = useState<Source[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const SOURCE_REFRESH_EVENTS = new Set([
+  'sync.completed',
+  'sync.failed',
+  'source.created',
+  'source.updated',
+  'source.deleted',
+]);
 
-  const fetchSources = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await sourcesApi.getAll();
-      setSources(data);
-    } catch (err) {
-      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load sources';
-      setError(errorMessage);
-      console.error('Error fetching sources:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+/**
+ * Mutation-only hook for components that need to act on sources but don't
+ * render the full list. Doesn't fetch, doesn't subscribe to SSE — keep this
+ * as light as possible since it's used per-card.
+ */
+export function useSourceActions() {
   const createSource = useCallback(async (sourceData: CreateSourceRequest): Promise<Source> => {
     try {
-      const newSource = await sourcesApi.create(sourceData);
-      setSources((prev) => [...prev, newSource]);
-      return newSource;
+      return await sourcesApi.create(sourceData);
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to create source';
       throw new Error(errorMessage);
@@ -36,9 +29,7 @@ export function useSources() {
   const updateSource = useCallback(
     async (id: string, sourceData: Partial<CreateSourceRequest>): Promise<Source> => {
       try {
-        const updatedSource = await sourcesApi.update(id, sourceData);
-        setSources((prev) => prev.map((source) => (source.id === id ? updatedSource : source)));
-        return updatedSource;
+        return await sourcesApi.update(id, sourceData);
       } catch (err) {
         const errorMessage = err instanceof ApiError ? err.message : 'Failed to update source';
         throw new Error(errorMessage);
@@ -50,54 +41,72 @@ export function useSources() {
   const deleteSource = useCallback(async (id: string): Promise<void> => {
     try {
       await sourcesApi.delete(id);
-      setSources((prev) => prev.filter((source) => source.id !== id));
     } catch (err) {
       const errorMessage = err instanceof ApiError ? err.message : 'Failed to delete source';
       throw new Error(errorMessage);
     }
   }, []);
 
-  const testConnection = useCallback(
-    async (id: string) => {
-      try {
-        const result = await sourcesApi.testConnection(id);
-        await fetchSources();
-        return result;
-      } catch (err) {
-        const errorMessage = err instanceof ApiError ? err.message : 'Failed to test connection';
-        throw new Error(errorMessage);
-      }
-    },
-    [fetchSources],
-  );
+  const testConnection = useCallback(async (id: string) => {
+    try {
+      return await sourcesApi.testConnection(id);
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to test connection';
+      throw new Error(errorMessage);
+    }
+  }, []);
 
-  const syncSource = useCallback(
-    async (id: string): Promise<void> => {
-      try {
-        await sourcesApi.sync(id);
-        await fetchSources();
-      } catch (err) {
-        const errorMessage = err instanceof ApiError ? err.message : 'Failed to sync';
-        throw new Error(errorMessage);
-      }
-    },
-    [fetchSources],
-  );
+  const syncSource = useCallback(async (id: string): Promise<void> => {
+    try {
+      await sourcesApi.sync(id);
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to sync';
+      throw new Error(errorMessage);
+    }
+  }, []);
+
+  return { createSource, updateSource, deleteSource, testConnection, syncSource };
+}
+
+export function useSources() {
+  const [sources, setSources] = useState<Source[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const hasFetched = useRef(false);
+  const actions = useSourceActions();
+
+  const fetchSources = useCallback(async () => {
+    try {
+      if (!hasFetched.current) setLoading(true);
+      setError(null);
+      const data = await sourcesApi.getAll();
+      setSources(data);
+      hasFetched.current = true;
+    } catch (err) {
+      const errorMessage = err instanceof ApiError ? err.message : 'Failed to load sources';
+      setError(errorMessage);
+      console.error('Error fetching sources:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchSources();
   }, [fetchSources]);
+
+  useServerEvents((event) => {
+    if (SOURCE_REFRESH_EVENTS.has(event.type)) {
+      fetchSources();
+    }
+  });
 
   return {
     sources,
     loading,
     error,
     refetch: fetchSources,
-    createSource,
-    updateSource,
-    deleteSource,
-    testConnection,
-    syncSource,
+    ...actions,
   };
 }
 
@@ -124,6 +133,12 @@ export function useSourceStats() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  useServerEvents((event) => {
+    if (SOURCE_REFRESH_EVENTS.has(event.type)) {
+      fetchStats();
+    }
+  });
 
   return {
     stats,

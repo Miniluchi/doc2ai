@@ -100,13 +100,21 @@ export default function Dashboard() {
           <CardContent>
             {monitoringStatus ? (
               <>
-                <Badge variant={monitoringStatus.isRunning ? 'default' : 'secondary'}>
-                  {monitoringStatus.isRunning ? 'Active' : 'Inactive'}
+                <Badge
+                  variant={
+                    monitoringStatus.isRunning && monitoringStatus.totalActiveSources > 0
+                      ? 'default'
+                      : 'secondary'
+                  }
+                >
+                  {monitoringStatus.isRunning && monitoringStatus.totalActiveSources > 0
+                    ? 'Active'
+                    : 'Inactive'}
                 </Badge>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {monitoringStatus.isRunning
+                  {monitoringStatus.isRunning && monitoringStatus.totalActiveSources > 0
                     ? `${monitoringStatus.totalActiveSources} sources monitored`
-                    : 'Monitoring stopped'}
+                    : 'No source monitored'}
                 </p>
               </>
             ) : (
