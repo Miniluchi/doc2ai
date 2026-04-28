@@ -145,37 +145,6 @@ export function notFoundHandler(req: Request, res: Response): void {
   });
 }
 
-export function asyncErrorHandler(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>,
-) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-}
-
-export function wrapAsync(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
-  return function (req: Request, res: Response, next: NextFunction): void {
-    fn(req, res, next).catch(next);
-  };
-}
-
-export function validationErrorHandler(
-  error: AppError,
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
-  if (error.name === 'ValidationError') {
-    res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      error: error.message,
-      details: error.details ?? {},
-    });
-    return;
-  }
-  next(error);
-}
 
 export function logError(error: AppError, req: Request, _res: Response, next: NextFunction): void {
   logger.error(

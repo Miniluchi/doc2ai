@@ -55,27 +55,6 @@ export function decryptCredentials(encryptedData: string): unknown {
   }
 }
 
-export function generateEncryptionKey(): string {
-  return crypto.randomBytes(32).toString('hex');
-}
-
-export function hashPassword(password: string): string {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-  return `${salt}:${hash}`;
-}
-
-export function verifyPassword(password: string, hashedPassword: string): boolean {
-  try {
-    const [salt, hash] = hashedPassword.split(':');
-    if (!salt || !hash) return false;
-    const verifyHash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-    return hash === verifyHash;
-  } catch (error) {
-    logger.error({ err: error }, 'Password verification failed');
-    return false;
-  }
-}
 
 export function generateFileChecksum(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
