@@ -59,6 +59,7 @@ async function setupApp(): Promise<typeof app> {
     },
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => req.originalUrl.startsWith('/api/events'),
   });
   app.use('/api/', limiter);
 

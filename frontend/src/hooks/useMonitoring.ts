@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, monitoringApi } from '../services/api';
 import type { MonitoringStatus, SyncLog } from '../types/api';
+import { useServerEvents } from './useServerEvents';
 
 export function useMonitoring() {
   const [status, setStatus] = useState<MonitoringStatus | null>(null);
@@ -55,6 +56,12 @@ export function useMonitoring() {
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
+
+  useServerEvents((event) => {
+    if (event.type === 'source.created' || event.type === 'source.deleted') {
+      fetchStatus();
+    }
+  });
 
   return {
     status,

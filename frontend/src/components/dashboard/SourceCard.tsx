@@ -33,7 +33,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useSources } from '../../hooks/useSources';
+import { useSourceActions } from '../../hooks/useSources';
 import type { Source } from '../../types/api';
 
 interface SourceCardProps {
@@ -51,7 +51,7 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
     message: string;
   } | null>(null);
 
-  const { testConnection, syncSource, deleteSource } = useSources();
+  const { testConnection, syncSource, deleteSource } = useSourceActions();
 
   const handleTestConnection = async () => {
     try {

@@ -4,6 +4,8 @@ import { eq, and, count, gte, desc } from 'drizzle-orm';
 import { encryptCredentials, decryptCredentials } from '../utils/encryption.js';
 import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
 import ConversionService from './conversionService.js';
+import monitoringService from './monitoringService.js';
+import eventBus from './eventBus.js';
 import config from '../config/env.js';
 import logger from '../config/logger.js';
 import type { Source, ParsedSource, SourceConfig, FileInfo } from '../types/domain.js';
@@ -109,7 +111,20 @@ class SourceService {
         .returning();
 
       logger.info(`Source created: ${name} (${platform})`);
-      return source as unknown as Source;
+
+      const createdSource = source as unknown as Source;
+      eventBus.emitEvent({ type: 'source.created', sourceId: createdSource.id });
+
+      void (async () => {
+        try {
+          await monitoringService.startSourceMonitoring(createdSource);
+          await monitoringService.syncSource(createdSource.id);
+        } catch (err) {
+          logger.error({ err, sourceId: createdSource.id }, 'Failed to auto-sync new source');
+        }
+      })();
+
+      return createdSource;
     } catch (error) {
       logger.error({ err: error }, 'Error creating source');
       throw error;
@@ -142,6 +157,7 @@ class SourceService {
         .returning();
 
       logger.info(`Source updated: ${source!.name}`);
+      eventBus.emitEvent({ type: 'source.updated', sourceId: id });
       return source as unknown as Source;
     } catch (error) {
       logger.error({ err: error }, 'Error updating source');
@@ -151,9 +167,11 @@ class SourceService {
 
   async deleteSource(id: string): Promise<{ success: boolean }> {
     try {
+      await monitoringService.stopSourceMonitoring(id);
       await db.delete(sources).where(eq(sources.id, id));
 
       logger.info(`Source deleted: ${id}`);
+      eventBus.emitEvent({ type: 'source.deleted', sourceId: id });
       return { success: true };
     } catch (error) {
       logger.error({ err: error }, 'Error deleting source');
@@ -236,7 +254,6 @@ class SourceService {
 
   async syncSource(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      const monitoringService = (await import('./monitoringService.js')).default;
       await monitoringService.syncSource(id);
       return { success: true, message: 'Sync completed successfully' };
     } catch (error) {

@@ -33,7 +33,7 @@ import GoogleDriveIconUrl from '../../assets/GoogleDrive.svg';
 import OneDriveIconUrl from '../../assets/OneDrive.svg';
 import SharePointIconUrl from '../../assets/Sharepoint.svg';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
-import { useSources } from '../../hooks/useSources';
+import { useSourceActions } from '../../hooks/useSources';
 import type { CreateSourceRequest } from '../../types/api';
 import { GoogleAuthButton } from '../auth/GoogleAuthButton';
 import FilePreview from './FilePreview';
@@ -92,7 +92,7 @@ export function AddSourceDialog({ children, onSourceAdded }: AddSourceDialogProp
     path: string;
   } | null>(null);
 
-  const { createSource } = useSources();
+  const { createSource } = useSourceActions();
   const { user: googleUser, error: authError } = useGoogleAuth();
 
   const form = useForm<SourceFormData>({

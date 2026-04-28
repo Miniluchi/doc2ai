@@ -4,6 +4,7 @@ import { eq, and, count, desc } from 'drizzle-orm';
 import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
 import ConversionService from './conversionService.js';
 import queueService from './queueService.js';
+import eventBus from './eventBus.js';
 import { decryptCredentials } from '../utils/encryption.js';
 import * as cron from 'node-cron';
 import type { ScheduledTask } from 'node-cron';
@@ -193,6 +194,7 @@ class MonitoringService {
     }
 
     this.syncInProgress.add(sourceId);
+    eventBus.emitEvent({ type: 'sync.started', sourceId });
 
     try {
       const monitor = this.activeMonitors.get(sourceId);
@@ -202,6 +204,7 @@ class MonitoringService {
       });
 
       if (!source) {
+        this.activeMonitors.delete(sourceId);
         throw new Error('Source not found');
       }
 
@@ -282,6 +285,12 @@ class MonitoringService {
         message: `Processed ${filteredFiles.length} files`,
         details: JSON.stringify({ fileCount: filteredFiles.length }),
       });
+
+      eventBus.emitEvent({
+        type: 'sync.completed',
+        sourceId,
+        fileCount: filteredFiles.length,
+      });
     } catch (error) {
       logger.error({ err: error, sourceId }, 'Sync failed for source');
 
@@ -296,6 +305,12 @@ class MonitoringService {
       } catch (dbError) {
         logger.error({ err: dbError }, 'Failed to log sync error');
       }
+
+      eventBus.emitEvent({
+        type: 'sync.failed',
+        sourceId,
+        error: (error as Error).message,
+      });
 
       throw error;
     } finally {
