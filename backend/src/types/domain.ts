@@ -1,6 +1,6 @@
 // Domain interfaces for the 4 main entities.
-// Intentionally decoupled from @prisma/client so they can be repointed to
-// Drizzle (or any other ORM) without touching controllers/routes/converters.
+// Intentionally decoupled from the ORM layer — these are the shapes exposed to
+// controllers, routes, and converters regardless of what sits below.
 
 export interface SourceConfig {
   credentials?: Record<string, string> | string | null;

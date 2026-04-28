@@ -25,12 +25,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 #### Backend (Node.js/Express)
 
-- **Development**: `cd backend && npm run dev` (uses nodemon)
+- **Development**: `cd backend && npm run dev` (uses tsx watch)
 - **Production**: `cd backend && npm start`
 - **Database**:
-  - `cd backend && npm run prisma:generate` (generate Prisma client)
-  - `cd backend && npm run prisma:migrate` (run migrations)
-  - `cd backend && npm run prisma:studio` (database GUI)
+  - `cd backend && npm run db:generate` (generate Drizzle migration)
+  - `cd backend && npm run db:migrate` (apply pending migrations)
+  - `cd backend && npm run db:studio` (database GUI)
+  - `cd backend && npm run db:push` (push schema directly, dev only)
 - **Linting**: `cd backend && npm run lint`
 - **Testing**: `cd backend && npm test`
 
@@ -80,7 +81,9 @@ React SPA using modern TypeScript patterns:
 4. **Conversion Pipeline**: Jobs processed through appropriate converter
 5. **Storage**: Converted markdown stored locally, tracked in `ConvertedFile`
 
-### Database Schema (Prisma)
+### Database Schema (Drizzle ORM)
+
+Schema defined in `backend/src/db/schema.ts`. Migrations in `backend/drizzle/`.
 
 - **Source**: Cloud drive configurations and credentials (encrypted)
 - **ConversionJob**: Async conversion tasks with status tracking
@@ -115,7 +118,7 @@ React SPA using modern TypeScript patterns:
 ### Docker Features
 
 - **Multi-stage build** for frontend (build → nginx)
-- **Auto-migration** of DB on backend startup (`npx prisma db push`)
+- **Auto-migration** of DB on backend startup (Drizzle `migrate()` called in `initializeDatabase()`)
 - **Persistent volumes** for storage, temp files and database
 - **Network isolation** with `doc2ai-network`
 
@@ -131,7 +134,7 @@ BACKEND_PORT=3000
 FRONTEND_PORT=5173
 REDIS_PORT=6379
 
-# Database
+# Database (local dev — Docker containers use file:/app/data/dev.db)
 DATABASE_URL="file:./dev.db"
 
 # Security

@@ -11,7 +11,7 @@ services:
       - 8.8.4.4
     environment:
       - TZ=Europe/Paris
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=file:/app/data/dev.db
       - JWT_SECRET=${JWT_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - PORT=3000
@@ -33,7 +33,7 @@ services:
     volumes:
       - backend_storage:/app/storage
       - backend_temp:/app/temp
-      - backend_db:/app/prisma
+      - backend_db:/app/data
       - ${EXPORT_PATH:-./exports}:/app/exports
     depends_on:
       - redis
