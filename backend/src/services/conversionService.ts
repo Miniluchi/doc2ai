@@ -168,14 +168,26 @@ class ConversionService {
         .where(eq(conversionJobs.id, jobId))
         .returning();
 
-      await db.insert(convertedFiles).values({
-        originalPath: job.filePath,
-        convertedPath: outputPath,
-        fileName: outputFileName,
-        fileType: fileExtension,
-        platform: job.source.platform,
-        checksum: result.checksum ?? 'unknown',
-      });
+      await db
+        .insert(convertedFiles)
+        .values({
+          originalPath: job.filePath,
+          convertedPath: outputPath,
+          fileName: outputFileName,
+          fileType: fileExtension,
+          platform: job.source.platform,
+          checksum: result.checksum ?? 'unknown',
+        })
+        .onConflictDoUpdate({
+          target: [convertedFiles.originalPath, convertedFiles.platform],
+          set: {
+            convertedPath: outputPath,
+            fileName: outputFileName,
+            fileType: fileExtension,
+            checksum: result.checksum ?? 'unknown',
+            updatedAt: new Date(),
+          },
+        });
 
       logger.info(`Job completed: ${job.fileName}`);
       return completedJob as unknown as ConversionJob;
