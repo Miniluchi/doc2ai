@@ -145,7 +145,6 @@ export function notFoundHandler(req: Request, res: Response): void {
   });
 }
 
-
 export function logError(error: AppError, req: Request, _res: Response, next: NextFunction): void {
   logger.error(
     {

@@ -55,7 +55,6 @@ export function decryptCredentials(encryptedData: string): unknown {
   }
 }
 
-
 export function generateFileChecksum(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('md5');
