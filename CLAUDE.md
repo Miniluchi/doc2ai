@@ -23,17 +23,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Local Development (if needed)
 
-#### Backend (Node.js/Express)
+#### Backend (Bun/Express)
 
-- **Development**: `cd backend && npm run dev` (uses tsx watch)
-- **Production**: `cd backend && npm start`
+- **Install**: `cd backend && bun install`
+- **Development**: `cd backend && bun run dev` (uses bun --watch)
+- **Production**: `cd backend && bun run start`
+- **Build**: `cd backend && bun run build` (tsc, outputs to dist/)
 - **Database**:
-  - `cd backend && npm run db:generate` (generate Drizzle migration)
-  - `cd backend && npm run db:migrate` (apply pending migrations)
-  - `cd backend && npm run db:studio` (database GUI)
-  - `cd backend && npm run db:push` (push schema directly, dev only)
-- **Linting**: `cd backend && npm run lint`
-- **Testing**: `cd backend && npm test`
+  - `cd backend && bun run db:generate` (generate Drizzle migration)
+  - `cd backend && bun run db:migrate` (apply pending migrations)
+  - `cd backend && bun run db:studio` (database GUI)
+  - `cd backend && bun run db:push` (push schema directly, dev only)
+- **Linting**: `cd backend && bun run lint`
+- **Testing**: `cd backend && bun test`
 
 #### Frontend (React + TypeScript + Vite)
 
