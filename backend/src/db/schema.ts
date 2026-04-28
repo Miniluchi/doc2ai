@@ -3,13 +3,17 @@ import { relations } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
 export const sources = sqliteTable('sources', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => createId()),
   name: text('name').notNull(),
   platform: text('platform').notNull(),
   config: text('config').notNull(),
   status: text('status').notNull().default('inactive'),
   lastSync: integer('lastSync', { mode: 'timestamp_ms' }),
-  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
   updatedAt: integer('updatedAt', { mode: 'timestamp_ms' })
     .notNull()
     .$defaultFn(() => new Date())
@@ -19,7 +23,9 @@ export const sources = sqliteTable('sources', {
 export const conversionJobs = sqliteTable(
   'conversion_jobs',
   {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
     sourceId: text('sourceId')
       .notNull()
       .references(() => sources.id, { onDelete: 'cascade' }),
@@ -32,7 +38,9 @@ export const conversionJobs = sqliteTable(
     error: text('error'),
     startedAt: integer('startedAt', { mode: 'timestamp_ms' }),
     completedAt: integer('completedAt', { mode: 'timestamp_ms' }),
-    createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+    createdAt: integer('createdAt', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index('conversion_jobs_status_createdAt_idx').on(table.status, table.createdAt),
@@ -44,7 +52,9 @@ export const conversionJobs = sqliteTable(
 export const syncLogs = sqliteTable(
   'sync_logs',
   {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
     sourceId: text('sourceId')
       .notNull()
       .references(() => sources.id, { onDelete: 'cascade' }),
@@ -52,7 +62,9 @@ export const syncLogs = sqliteTable(
     status: text('status').notNull(),
     message: text('message').notNull(),
     details: text('details'),
-    createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+    createdAt: integer('createdAt', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (table) => [
     index('sync_logs_sourceId_createdAt_idx').on(table.sourceId, table.createdAt),
@@ -63,14 +75,18 @@ export const syncLogs = sqliteTable(
 export const convertedFiles = sqliteTable(
   'converted_files',
   {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
     originalPath: text('originalPath').notNull(),
     convertedPath: text('convertedPath').notNull(),
     fileName: text('fileName').notNull(),
     fileType: text('fileType').notNull(),
     platform: text('platform').notNull(),
     checksum: text('checksum').notNull(),
-    createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()),
+    createdAt: integer('createdAt', { mode: 'timestamp_ms' })
+      .notNull()
+      .$defaultFn(() => new Date()),
     updatedAt: integer('updatedAt', { mode: 'timestamp_ms' })
       .notNull()
       .$defaultFn(() => new Date())

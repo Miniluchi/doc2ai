@@ -1,5 +1,5 @@
 import getDb from '../config/database.js';
-import { conversionJobs, convertedFiles, sources } from '../db/schema.js';
+import { conversionJobs, convertedFiles } from '../db/schema.js';
 import { eq, and, count, gte, lt, inArray, desc } from 'drizzle-orm';
 import { ConverterFactory } from '../converters/converterFactory.js';
 import path from 'node:path';
@@ -36,10 +36,7 @@ class ConversionService {
         limit,
       });
 
-      const countRows = await db
-        .select({ total: count() })
-        .from(conversionJobs)
-        .where(whereClause);
+      const countRows = await db.select({ total: count() }).from(conversionJobs).where(whereClause);
       const total = countRows[0]?.total ?? 0;
 
       return {
@@ -272,10 +269,7 @@ class ConversionService {
       const deleted = await db
         .delete(conversionJobs)
         .where(
-          and(
-            eq(conversionJobs.status, 'completed'),
-            lt(conversionJobs.completedAt, cutoffDate),
-          ),
+          and(eq(conversionJobs.status, 'completed'), lt(conversionJobs.completedAt, cutoffDate)),
         )
         .returning({ id: conversionJobs.id });
 

@@ -65,10 +65,7 @@ class MonitoringService {
 
       logger.info('Starting monitoring service...');
 
-      const activeSources = await db
-        .select()
-        .from(sources)
-        .where(eq(sources.status, 'active'));
+      const activeSources = await db.select().from(sources).where(eq(sources.status, 'active'));
 
       for (const source of activeSources) {
         await this.startSourceMonitoring(source as unknown as Source);
@@ -272,10 +269,7 @@ class MonitoringService {
         await this.processFileChange(sourceId, file, connector);
       }
 
-      await db
-        .update(sources)
-        .set({ lastSync: new Date() })
-        .where(eq(sources.id, sourceId));
+      await db.update(sources).set({ lastSync: new Date() }).where(eq(sources.id, sourceId));
 
       if (monitor) {
         monitor.lastCheck = new Date();
