@@ -1,0 +1,10 @@
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'file::memory:';
+process.env.JWT_SECRET = 'test-jwt-secret-for-unit-tests-only';
+process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef';
+process.env.LOG_LEVEL = 'silent';
+process.env.PORT = '0';
+process.env.CORS_ORIGIN = 'http://localhost:5173';
+process.env.STORAGE_PATH = './storage';
+process.env.TEMP_PATH = './temp';
+process.env.EXPORT_PATH = './exports';
