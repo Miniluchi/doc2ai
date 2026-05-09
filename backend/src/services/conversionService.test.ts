@@ -11,7 +11,12 @@ const fsExtraStub = {
   pathExists: mock(async () => true),
   remove: mock(async () => undefined),
   copy: mock(async () => undefined),
-  stat: mock(async () => ({ size: 1, isFile: () => true, mtime: new Date(), birthtime: new Date() })),
+  stat: mock(async () => ({
+    size: 1,
+    isFile: () => true,
+    mtime: new Date(),
+    birthtime: new Date(),
+  })),
   createReadStream: () => ({ on: () => undefined }),
   createWriteStream: () => ({ on: () => undefined }),
 };

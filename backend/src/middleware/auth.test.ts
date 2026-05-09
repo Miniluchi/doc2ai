@@ -19,7 +19,7 @@ function makeNext(): { next: NextFunction; called: boolean } {
 describe('extractUserInfo', () => {
   it('marks request unauthenticated when no token is present', () => {
     const req = makeReq();
-    const { next, } = makeNext();
+    const { next } = makeNext();
     extractUserInfo(req, {} as Response, next);
 
     expect(req.userInfo).toEqual({ isAuthenticated: false, userId: null, role: null });

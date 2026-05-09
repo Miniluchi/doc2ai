@@ -68,7 +68,10 @@ describe('sourcesApi', () => {
     const call = lastCall();
     expect(call.init.method).toBe('POST');
     expect((call.init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
-    expect(JSON.parse(call.init.body as string)).toMatchObject({ name: 'X', platform: 'googledrive' });
+    expect(JSON.parse(call.init.body as string)).toMatchObject({
+      name: 'X',
+      platform: 'googledrive',
+    });
   });
 
   it('builds DELETE for delete()', async () => {

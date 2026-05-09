@@ -13,10 +13,7 @@ export function makeChain<T = unknown>(getResolved: AsyncSource<T>) {
   const handler: ProxyHandler<() => unknown> = {
     get(_target, prop) {
       if (prop === 'then') {
-        return (
-          resolve: (value: T) => unknown,
-          reject?: (reason: unknown) => unknown,
-        ): unknown => {
+        return (resolve: (value: T) => unknown, reject?: (reason: unknown) => unknown): unknown => {
           try {
             return Promise.resolve(getResolved()).then(resolve, reject);
           } catch (err) {
