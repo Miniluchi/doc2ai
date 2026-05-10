@@ -7,3 +7,4 @@ dist/
 docs/
 
 ./exports
+dev.db
