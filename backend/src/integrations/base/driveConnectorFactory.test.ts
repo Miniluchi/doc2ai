@@ -77,9 +77,10 @@ describe('DriveConnectorFactory.getConfigSchema', () => {
   it('returns the SharePoint schema with credentials and siteUrl required', () => {
     const schema = DriveConnectorFactory.getConfigSchema('sharepoint') as Record<
       string,
-      Record<string, Record<string, unknown>>
+      Record<string, unknown>
     >;
-    expect(schema['credentials']?.['clientId']?.['required']).toBe(true);
+    const credentials = schema['credentials'] as Record<string, Record<string, unknown>>;
+    expect(credentials['clientId']?.['required']).toBe(true);
     expect(schema['siteUrl']?.['required']).toBe(true);
   });
 

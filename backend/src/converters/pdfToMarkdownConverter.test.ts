@@ -60,7 +60,7 @@ beforeEach(() => {
     total: 2,
   }));
   getInfoMock = mock(async () => ({
-    info: { Title: 'Doc Title', Author: 'Tester', Creator: 'Tester' },
+    info: { Title: 'Doc Title', Author: 'Tester', Creator: 'Tester', CreationDate: 'today' },
     total: 2,
   }));
 });

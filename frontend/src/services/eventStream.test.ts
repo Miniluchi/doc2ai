@@ -15,9 +15,11 @@ class MockEventSource {
   public onerror: (() => void) | null = null;
   public readyState = 0;
   public close = vi.fn();
+  public url: string;
   static readonly CLOSED = 2;
 
-  constructor(public url: string) {
+  constructor(url: string) {
+    this.url = url;
     created.push(this as unknown as FakeEventSource);
   }
 }

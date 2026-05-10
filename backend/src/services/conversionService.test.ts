@@ -1,5 +1,5 @@
 import { describe, it, expect, mock, beforeAll, beforeEach, afterAll } from 'bun:test';
-import { createFakeDb, makeFakeDbState, type FakeDbState } from '../../test/dbMock.js';
+import { createFakeDb, makeFakeDbState, type FakeDbState } from '../test/dbMock.js';
 
 const dbState: FakeDbState = makeFakeDbState();
 const fakeDb = createFakeDb(dbState);
