@@ -26,10 +26,12 @@ Open `.env` and fill in your credentials:
 ### 2. Start the application
 
 ```bash
-./start.sh
+docker compose up -d
 ```
 
-This single command builds and starts all services (backend, frontend, Redis). It takes about 30 seconds on the first run.
+This command builds (if needed) and starts all services (backend, frontend, Redis) in the background. The first run takes about 30 seconds while images are built; subsequent starts are nearly instant.
+
+> The `./start.sh` script is intended for development only — it performs a full no-cache rebuild and recreates the containers on every run.
 
 ### 3. Open the app
 
@@ -45,11 +47,11 @@ From there you can:
 
 | Command | Description |
 |---|---|
-| `./start.sh` | Full rebuild and start |
-| `docker compose up -d` | Start without rebuilding |
+| `docker compose up -d` | Start all services (builds images if needed) |
 | `docker compose down` | Stop all services |
 | `docker compose logs -f` | Follow live logs |
 | `docker compose logs -f backend` | Follow backend logs only |
+| `./start.sh` | Dev-only: full no-cache rebuild and restart |
 
 ## Supported formats
 
