@@ -1,6 +1,6 @@
 {
   "name": "doc2ai-backend",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Doc2AI Backend API - Documentation to AI converter",
   "main": "dist/app.js",
   "type": "module",
