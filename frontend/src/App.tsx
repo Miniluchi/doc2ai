@@ -1,6 +1,4 @@
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
 import './App.css';
 import Doc2aiLogoUrl from './assets/doc2ai-full.svg';
 import { useMonitoring } from './hooks/useMonitoring';
@@ -24,10 +22,6 @@ function App() {
             <h1 className="text-2xl font-bold">Doc2AI</h1>
             <Badge variant="secondary">Self-hosted</Badge>
           </div>
-          <Button variant="outline" size="sm">
-            <Settings className="h-4 w-4" />
-            Settings
-          </Button>
         </div>
       </header>
 

@@ -27,7 +27,6 @@ import {
   Loader2,
   MoreHorizontal,
   RefreshCw,
-  Settings,
   TestTube,
   Trash2,
   XCircle,
@@ -169,10 +168,6 @@ export function SourceCard({ source, onSync, onDelete }: SourceCardProps) {
                     Sync now
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configure
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
                     className="text-red-600 hover:text-red-700"

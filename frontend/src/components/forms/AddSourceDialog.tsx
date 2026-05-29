@@ -255,16 +255,18 @@ export function AddSourceDialog({ children, onSourceAdded }: AddSourceDialogProp
                               <GoogleDriveIcon className="w-4 h-4" /> Google Drive
                             </span>
                           </SelectItem>
-                          <SelectItem value="sharepoint">
+                          <SelectItem value="sharepoint" disabled>
                             <span className="flex items-center gap-2">
                               <SharePointIcon className="w-4 h-4" />
                               Microsoft SharePoint
+                              <span className="text-xs text-muted-foreground">(coming soon)</span>
                             </span>
                           </SelectItem>
-                          <SelectItem value="onedrive">
+                          <SelectItem value="onedrive" disabled>
                             <span className="flex items-center gap-2">
                               <OneDriveIcon className="w-4 h-4" />
                               Microsoft OneDrive
+                              <span className="text-xs text-muted-foreground">(coming soon)</span>
                             </span>
                           </SelectItem>
                         </SelectContent>
