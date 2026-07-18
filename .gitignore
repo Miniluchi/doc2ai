@@ -4,7 +4,6 @@ dist/
 .DS_Store
 .idea/
 .cursor/
-docs/
 
 ./exports
 dev.db
