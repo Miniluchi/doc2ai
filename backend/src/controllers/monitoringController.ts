@@ -1,4 +1,5 @@
 import monitoringService from '../services/monitoringService.js';
+import { runHealthProbes } from '../services/healthService.js';
 import logger from '../config/logger.js';
 import type { Request, Response } from 'express';
 
@@ -96,12 +97,17 @@ class MonitoringController {
   async healthCheck(_req: Request, res: Response): Promise<void> {
     try {
       const status = await monitoringService.getStatus();
-      const isHealthy = status.isRunning && status.activeMonitors === status.totalActiveSources;
+      const report = await runHealthProbes(status);
 
-      res.status(isHealthy ? 200 : 503).json({
-        success: isHealthy,
+      // Only `down` is worth a 503: a degraded service still answers and still
+      // serves already converted files, it just stopped picking up new changes.
+      const isDown = report.status === 'down';
+
+      res.status(isDown ? 503 : 200).json({
+        success: !isDown,
         data: {
-          status: isHealthy ? 'healthy' : 'unhealthy',
+          status: report.status,
+          probes: report.probes,
           monitoring: status.isRunning,
           activeMonitors: status.activeMonitors,
           totalSources: status.totalActiveSources,
@@ -114,7 +120,8 @@ class MonitoringController {
       res.status(503).json({
         success: false,
         data: {
-          status: 'error',
+          status: 'down',
+          probes: [],
           error: (error as Error).message,
           timestamp: new Date().toISOString(),
         },
