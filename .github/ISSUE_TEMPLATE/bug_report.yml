@@ -1,0 +1,88 @@
+name: "🐛 Bug report"
+description: "Report a detected anomaly (bug, unexpected behavior, security issue)"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please provide as much information as possible: the goal of this report is to make the anomaly **reproducible** so the appropriate fix can be determined.
+
+  - type: input
+    id: version
+    attributes:
+      label: Doc2AI version
+      description: "Installed version (visible in the GitHub releases or package.json)"
+      placeholder: "v0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options:
+        - Backend (API / conversion / monitoring)
+        - Frontend (web interface)
+        - Google Drive connection
+        - Markdown file export
+        - Infrastructure (Docker / Redis / database)
+        - Dependency / security
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the anomaly
+      description: "What happens? What was the expected behavior?"
+      placeholder: |
+        Observed behavior: ...
+        Expected behavior: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: "List of actions that reproduce the anomaly"
+      placeholder: |
+        1. Start the application with `docker compose up -d`
+        2. Connect a Google Drive account
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "Operating system, Docker version, browser…"
+      placeholder: |
+        OS: macOS 15.2
+        Docker: 27.x
+        Browser: Firefox 140
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: "Output of `docker compose logs backend --tail 50` (or frontend). Remember to redact any secrets."
+      render: shell
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Estimated severity
+      options:
+        - Critical (application unusable or security vulnerability)
+        - Major (core feature broken)
+        - Minor (inconvenience, no blocker)
+    validations:
+      required: true

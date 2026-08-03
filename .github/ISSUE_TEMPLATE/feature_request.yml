@@ -1,0 +1,28 @@
+name: "💡 Improvement proposal"
+description: "Propose an evolution or improvement of the software"
+title: "[Enhancement]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or need
+      description: "What need does this improvement address? Which user feedback or metric motivates it?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: "Describe the improvement you have in mind"
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Estimated impact
+      description: "Expected gains (performance, security, user experience) and estimated cost (complexity, time)"
+    validations:
+      required: false
