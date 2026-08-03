@@ -1,11 +1,123 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
+# Dependency update policy for Doc2AI.
+#
+# Scope     : backend (npm), frontend (npm), both container images (docker),
+#             and the GitHub Actions used by the CI workflow.
+# Frequency : weekly, Monday 06:00 Europe/Paris — before the working week starts.
+# Type      : automatic pull requests, manual review and merge. Every PR goes
+#             through the CI workflow (format, lint, test, build) before merge.
+#
+# Updates are grouped so that a routine week produces a handful of reviewable
+# pull requests instead of dozens. Major bumps stay ungrouped: they are the ones
+# that need an individual impact assessment.
+#
+# Reference:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # ── Backend (Bun / npm registry) ───────────────────────────────────────────
+  - package-ecosystem: 'npm'
+    directory: '/backend'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Paris'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'backend'
+    commit-message:
+      prefix: 'deps(backend)'
+    groups:
+      backend-production:
+        dependency-type: 'production'
+        update-types:
+          - 'minor'
+          - 'patch'
+      backend-development:
+        dependency-type: 'development'
+        update-types:
+          - 'minor'
+          - 'patch'
+    ignore:
+      # Pinned on purpose: schema and migration generation must stay in step.
+      # Bumped manually, together, with `bun run db:generate` re-run afterwards.
+      - dependency-name: 'drizzle-orm'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'drizzle-kit'
+        update-types: ['version-update:semver-major']
+
+  # ── Frontend (Bun / npm registry) ──────────────────────────────────────────
+  - package-ecosystem: 'npm'
+    directory: '/frontend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Paris'
+    open-pull-requests-limit: 5
+    labels:
+      - 'dependencies'
+      - 'frontend'
+    commit-message:
+      prefix: 'deps(frontend)'
+    groups:
+      # Radix ships ~25 separate packages; without grouping they alone would
+      # saturate the pull request limit every week.
+      radix-ui:
+        patterns:
+          - '@radix-ui/*'
+      frontend-production:
+        dependency-type: 'production'
+        update-types:
+          - 'minor'
+          - 'patch'
+        exclude-patterns:
+          - '@radix-ui/*'
+      frontend-development:
+        dependency-type: 'development'
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # ── Container images ──────────────────────────────────────────────────────
+  - package-ecosystem: 'docker'
+    directory: '/backend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Paris'
+    labels:
+      - 'dependencies'
+      - 'docker'
+    commit-message:
+      prefix: 'deps(docker)'
+
+  - package-ecosystem: 'docker'
+    directory: '/frontend'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Paris'
+    labels:
+      - 'dependencies'
+      - 'docker'
+    commit-message:
+      prefix: 'deps(docker)'
+
+  # ── GitHub Actions used by the CI workflow ────────────────────────────────
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Paris'
+    labels:
+      - 'dependencies'
+      - 'ci'
+    commit-message:
+      prefix: 'deps(ci)'
