@@ -33,5 +33,10 @@ COPY --from=builder /app/dist ./dist/
 
 EXPOSE 3000
 
+# Liveness probe: the API answers on /api/health.
+# start-period covers migrations, which run at startup before the server listens.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD wget --quiet --spider --tries=1 http://127.0.0.1:3000/api/health || exit 1
+
 # Migrations run in-process inside initializeDatabase() on startup
 CMD ["bun", "dist/app.js"]
