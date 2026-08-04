@@ -48,5 +48,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Expose port
 EXPOSE 5173
 
+# Liveness probe: nginx must serve the SPA entry point
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --quiet --spider --tries=1 http://127.0.0.1:5173/ || exit 1
+
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
