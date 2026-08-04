@@ -49,8 +49,7 @@ class MonitoringService {
       ...parsedConfig,
       credentials: parsedConfig.credentials
         ? (decryptCredentials(parsedConfig.credentials as string) as
-            | string
-            | Record<string, string>)
+            string | Record<string, string>)
         : null,
     };
 
