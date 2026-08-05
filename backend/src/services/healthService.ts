@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises';
+import { access, writeFile, unlink } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 import config from '../config/env.js';
@@ -88,6 +88,36 @@ async function runProbe(name: string, probe: () => Promise<ProbeOutcome>): Promi
  * only the root would miss the likeliest case: one destination turned read-only
  * while the mount itself stays fine.
  */
+type WriteCheck = 'ok' | 'missing' | 'unwritable';
+
+/**
+ * Whether a directory can actually be written to.
+ *
+ * `access(W_OK)` is not enough. The export directory is a bind mount, and the
+ * container runs as root: the permission bits can say "writable" while the host
+ * filesystem refuses the write, so `access` returns success and the export still
+ * fails with EACCES. Only attempting a write tells the truth — which is exactly
+ * the failure mode this probe exists to catch.
+ */
+async function checkWritable(directory: string): Promise<WriteCheck> {
+  try {
+    await access(directory, fsConstants.F_OK);
+  } catch {
+    return 'missing';
+  }
+
+  const probeFile = path.join(directory, `.doc2ai-write-probe-${String(process.pid)}`);
+
+  try {
+    await writeFile(probeFile, '');
+    return 'ok';
+  } catch {
+    return 'unwritable';
+  } finally {
+    await unlink(probeFile).catch(() => undefined);
+  }
+}
+
 async function checkExportPath(destinations: string[]): Promise<ProbeOutcome> {
   const threshold = 'export root and every source destination are writable';
   const targets = [
@@ -98,16 +128,12 @@ async function checkExportPath(destinations: string[]): Promise<ProbeOutcome> {
   const unwritable: string[] = [];
 
   for (const target of targets) {
-    try {
-      await access(target, fsConstants.W_OK);
-    } catch (error) {
-      // A destination that does not exist yet is fine — it is created on the
-      // first export, and the root check already covers whether that can work.
-      const isMissingDestination =
-        (error as NodeJS.ErrnoException).code === 'ENOENT' && target !== config.exportPath;
-      if (isMissingDestination) continue;
-      unwritable.push(target);
-    }
+    const result = await checkWritable(target);
+
+    // A destination that does not exist yet is fine — it is created on the first
+    // export, and the root check already covers whether that can work.
+    if (result === 'missing' && target !== config.exportPath) continue;
+    if (result !== 'ok') unwritable.push(target);
   }
 
   if (unwritable.length > 0) {
