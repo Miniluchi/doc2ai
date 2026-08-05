@@ -26,6 +26,7 @@ interface SvcInstance {
   cleanupCompletedJobs(days?: number): Promise<number>;
   getJobById(id: string): Promise<{ id: string; source: { config: { destination?: string } } }>;
   getJobStats(): Promise<{ byStatus: Record<string, number>; recent: number }>;
+  processJob(id: string): Promise<unknown>;
 }
 
 let ConversionService: new () => SvcInstance;
@@ -41,6 +42,13 @@ beforeAll(async () => {
     getDb: () => fakeDb,
   }));
   mock.module('fs-extra', () => ({ default: fsExtraStub, ...fsExtraStub }));
+  mock.module('../converters/converterFactory.js', () => ({
+    ConverterFactory: {
+      getConverter: () => ({
+        convert: async () => ({ success: true, checksum: 'abc' }),
+      }),
+    },
+  }));
 
   ({ default: ConversionService } = (await import('./conversionService.js')) as {
     default: new () => SvcInstance;
@@ -117,6 +125,50 @@ describe('ConversionService.getJobById', () => {
     const result = await svc.getJobById('job-2');
     expect(result.id).toBe('job-2');
     expect(result.source.config.destination).toBe('out');
+  });
+});
+
+// Regression test for #52: a failing export used to be caught and logged at warn
+// level, after which the job was still marked completed — the user was told the
+// conversion succeeded while no file ever reached their folder.
+describe('ConversionService.processJob export failure', () => {
+  function seedJob() {
+    dbState.queryFindFirst = {
+      id: 'job-3',
+      fileName: 'report.pdf',
+      filePath: '/tmp/report.pdf',
+      status: 'pending',
+      source: {
+        id: 'src-1',
+        name: 'Drive',
+        platform: 'googledrive',
+        config: JSON.stringify({ destination: 'test_doc' }),
+      },
+    };
+    // What `.returning()` hands back on the final "mark completed" update.
+    dbState.updateRows = [{ id: 'job-3', status: 'completed' }];
+  }
+
+  it('fails the job when the file cannot be written to the destination', async () => {
+    seedJob();
+    fsExtraStub.copy = mock(async () => {
+      throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+    });
+
+    const svc = new ConversionService();
+
+    await expect(svc.processJob('job-3')).rejects.toThrow('Failed to export to');
+
+    fsExtraStub.copy = mock(async () => undefined);
+  });
+
+  it('completes the job when the export goes through', async () => {
+    seedJob();
+    fsExtraStub.copy = mock(async () => undefined);
+
+    const svc = new ConversionService();
+
+    await expect(svc.processJob('job-3')).resolves.toMatchObject({ status: 'completed' });
   });
 });
 

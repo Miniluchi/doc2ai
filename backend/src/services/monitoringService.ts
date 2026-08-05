@@ -1,11 +1,12 @@
 import getDb from '../config/database.js';
 import { sources, syncLogs, convertedFiles } from '../db/schema.js';
-import { eq, and, count, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { DriveConnectorFactory } from '../integrations/base/driveConnectorFactory.js';
 import ConversionService from './conversionService.js';
 import queueService from './queueService.js';
 import eventBus from './eventBus.js';
 import { decryptCredentials } from '../utils/encryption.js';
+import { getValidatedDestination } from '../utils/configParser.js';
 import * as cron from 'node-cron';
 import type { ScheduledTask } from 'node-cron';
 import config from '../config/env.js';
@@ -360,16 +361,36 @@ class MonitoringService {
     activeMonitors: number;
     totalActiveSources: number;
     lastSync: Date | null;
+    exportDestinations: string[];
     recentLogs: SyncLog[];
   }> {
     try {
       const activeSourceCount = this.activeMonitors.size;
 
       const activeRows = await db
-        .select({ total: count() })
+        .select({ name: sources.name, config: sources.config })
         .from(sources)
         .where(eq(sources.status, 'active'));
-      const total = activeRows[0]?.total ?? 0;
+      const total = activeRows.length;
+
+      // Resolved here so the health probe can check the directories files are
+      // actually written to, rather than only the export root.
+      const exportDestinations = [
+        ...new Set(
+          activeRows.flatMap((source) => {
+            try {
+              const parsedConfig: SourceConfig =
+                typeof source.config === 'string'
+                  ? (JSON.parse(source.config) as SourceConfig)
+                  : (source.config as unknown as SourceConfig);
+              return [getValidatedDestination(parsedConfig, source.name)];
+            } catch (error) {
+              logger.warn({ err: error, source: source.name }, 'Cannot resolve export destination');
+              return [];
+            }
+          }),
+        ),
+      ];
 
       const recentLogs = await db.query.syncLogs.findMany({
         limit: 10,
@@ -387,6 +408,7 @@ class MonitoringService {
         activeMonitors: activeSourceCount,
         totalActiveSources: total,
         lastSync: lastCheck,
+        exportDestinations,
         recentLogs: recentLogs as unknown as SyncLog[],
       };
     } catch (error) {

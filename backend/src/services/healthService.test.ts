@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { mkdtemp, rm, chmod } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import config from '../config/env.js';
@@ -18,6 +18,7 @@ function snapshot(overrides: Partial<MonitoringSnapshot> = {}): MonitoringSnapsh
     activeMonitors: 1,
     totalActiveSources: 1,
     lastSync: new Date(),
+    exportDestinations: [],
     ...overrides,
   };
 }
@@ -163,6 +164,46 @@ describe('exportPath probe', () => {
       const report = await runHealthProbes(snapshot());
       expect(probe(report, 'exportPath').status).toBe('down');
     });
+  });
+
+  // Regression tests for #52: only the export root used to be checked, so a
+  // destination turned read-only stayed invisible while every export failed.
+  describe('per-source destinations', () => {
+    const skipAsRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+    let destinationDir: string;
+
+    beforeAll(async () => {
+      destinationDir = path.join(writableExportDir, 'test_doc');
+      await mkdir(destinationDir, { recursive: true });
+    });
+
+    it('is ok when the destination exists and is writable', async () => {
+      const report = await runHealthProbes(snapshot({ exportDestinations: ['test_doc'] }));
+      expect(probe(report, 'exportPath').status).toBe('ok');
+    });
+
+    it('stays ok when a destination has not been created yet', async () => {
+      const report = await runHealthProbes(snapshot({ exportDestinations: ['never-exported'] }));
+      expect(probe(report, 'exportPath').status).toBe('ok');
+    });
+
+    it.skipIf(skipAsRoot)(
+      'goes down when a destination is read-only while the root stays writable',
+      async () => {
+        await chmod(destinationDir, 0o500);
+
+        try {
+          const report = await runHealthProbes(snapshot({ exportDestinations: ['test_doc'] }));
+          const result = probe(report, 'exportPath');
+
+          expect(result.status).toBe('down');
+          expect(result.message).toContain('test_doc');
+          expect(report.status).toBe('down');
+        } finally {
+          await chmod(destinationDir, 0o700);
+        }
+      },
+    );
   });
 });
 

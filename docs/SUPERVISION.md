@@ -98,7 +98,7 @@ jugée, afin qu'un résultat dégradé soit interprétable sans lire le code.
 
 | Sonde | Ce qu'elle vérifie | Défaillance qu'elle détecte |
 |---|---|---|
-| `exportPath` | Le dossier d'export existe et est accessible en écriture | Panne **silencieuse** : le dossier d'export est un montage lié vers le disque de l'hôte. Si le chemin disparaît ou passe en lecture seule, l'application continue de convertir et d'annoncer des succès alors que plus aucun fichier n'est écrit. |
+| `exportPath` | La racine d'export **et le dossier de destination de chaque source active** sont réellement inscriptibles | Panne **silencieuse** : le dossier d'export est un montage lié vers le disque de l'hôte. Si un chemin disparaît ou passe en lecture seule, plus aucun fichier n'est écrit. |
 | `syncFreshness` | L'âge de la dernière synchronisation réussie | Boucle de synchronisation **figée** dans un processus par ailleurs vivant : l'API répond, mais plus aucun document nouveau n'est détecté. |
 | `monitoring` | Le service de surveillance tourne et dispose d'un moniteur par source active | Service de surveillance arrêté, ou source connectée qui n'est plus réellement surveillée. |
 
@@ -106,6 +106,19 @@ Chaque sonde s'exécute sous un **délai de garde de 2 secondes** : une dépenda
 bloquée est signalée comme en panne plutôt que de bloquer l'endpoint lui-même.
 L'état global correspond au **pire** état constaté parmi les trois sondes
 (`ok` → `degraded` → `down`).
+
+#### Pourquoi la sonde `exportPath` écrit réellement un fichier
+
+Vérifier les droits avec `access(W_OK)` ne suffit pas, et l'expérience l'a montré
+en conditions réelles. Le dossier d'export est un **montage lié** vers le disque
+de l'hôte, et le conteneur tourne en `root` : les bits de permission peuvent
+indiquer « inscriptible » alors que la couche de partage de fichiers de l'hôte
+refuse l'écriture. L'appel `access` renvoyait donc un succès pendant que chaque
+export échouait en `EACCES` — précisément la panne que cette sonde doit détecter.
+
+La sonde crée donc un fichier témoin temporaire, puis le supprime. Seule une
+écriture réelle dit la vérité. Un dossier de destination qui n'existe pas encore
+n'est pas considéré comme une panne : il est créé au premier export.
 
 ### 3.2 Sondes d'infrastructure
 
@@ -142,7 +155,7 @@ se dérivent de `SYNC_INTERVAL_MINUTES` (15 minutes par défaut).
 | Sonde | Dégradé | En panne | Justification |
 |---|---|---|---|
 | `syncFreshness` | > 2 × l'intervalle (30 min) | > 4 × l'intervalle (60 min) | Un cycle manqué peut venir d'une erreur temporaire de l'API Google ; plusieurs cycles consécutifs manqués signalent une boucle bloquée. |
-| `exportPath` | — | Dossier absent ou non inscriptible | Binaire : sans dossier d'export inscriptible, aucune conversion n'aboutit. |
+| `exportPath` | — | Racine absente, ou racine / destination non inscriptible | Binaire : sans dossier inscriptible, aucun fichier n'atteint l'utilisateur. |
 | `monitoring` | Moniteurs manquants pour certaines sources | Service arrêté | Un moniteur manquant dégrade sans mettre en panne : l'API et les fichiers déjà convertis restent accessibles, seuls les changements nouveaux passent inaperçus. |
 
 ### Distinction entre « dégradé » et « en panne »

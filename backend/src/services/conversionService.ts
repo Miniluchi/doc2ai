@@ -151,16 +151,22 @@ class ConversionService {
 
       await this.updateJobProgress(jobId, 80, 'Exporting to configured destination');
 
+      // Delivering the file to the user's folder is the point of the conversion.
+      // A failed export must fail the job: reporting success while nothing lands
+      // on disk leaves the user with no way to notice the file never arrived.
+      const destination = getValidatedDestination(parsedSourceConfig, sourceName);
+      const exportFilePath = path.join(config.exportPath, destination, outputFileName);
+
       try {
-        await fs.ensureDir(config.exportPath);
-        const destination = getValidatedDestination(parsedSourceConfig, sourceName);
-        const exportFilePath = path.join(config.exportPath, destination, outputFileName);
         await fs.ensureDir(path.dirname(exportFilePath));
         await fs.copy(outputPath, exportFilePath);
-        logger.info(`File exported to: ${exportFilePath}`);
       } catch (error) {
-        logger.warn({ err: error }, 'Failed to export to configured destination');
+        throw new Error(`Failed to export to ${exportFilePath}: ${(error as Error).message}`, {
+          cause: error,
+        });
       }
+
+      logger.info(`File exported to: ${exportFilePath}`);
 
       const [completedJob] = await db
         .update(conversionJobs)
