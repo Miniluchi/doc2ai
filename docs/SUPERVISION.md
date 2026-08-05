@@ -18,15 +18,39 @@ Le périmètre retenu distingue deux niveaux :
 | Niveau | Ce qui est surveillé | Où | Bénéficiaire |
 |---|---|---|---|
 | **Local** | Les 3 conteneurs et l'état interne de l'application | Chez chaque utilisateur, embarqué dans le dépôt | Tout utilisateur de Doc2AI |
-| **Externe** | L'instance de référence déployée sur le serveur du projet | Uptime Kuma, sur un serveur distinct | L'équipe projet |
+| **Applicatif** | L'instance de référence, via son endpoint de santé | Uptime Kuma, pile Docker distincte | L'équipe projet |
 
-Ce découpage répond à deux contraintes. D'une part, aucun utilisateur ne doit se
-voir imposer l'installation d'un service de supervision dont il n'a pas l'usage :
-les sondes locales sont donc de simples `healthcheck` Docker et un endpoint HTTP,
-sans dépendance supplémentaire. D'autre part, la supervision externe doit être
-**hébergée en dehors de la machine surveillée** : un moniteur installé dans la même
-pile que l'application s'éteint avec elle, et personne n'est alerté au moment
-précis où il le faudrait.
+Ce découpage répond à une contrainte de conception : **aucun utilisateur ne doit se
+voir imposer l'installation d'un service de supervision dont il n'a pas l'usage.**
+Les sondes locales sont donc de simples `healthcheck` Docker et un endpoint HTTP,
+sans dépendance supplémentaire ; Uptime Kuma est déployé séparément, en dehors du
+dépôt, et n'est pas livré aux utilisateurs.
+
+### Ce qui est réellement en place, et ses limites
+
+L'instance supervisée et Uptime Kuma tournent aujourd'hui **sur la même machine**,
+dans deux piles Docker distinctes. Ce n'est pas l'idéal théorique, et il faut en
+mesurer la portée exacte :
+
+| Type de panne | Détectée ? |
+|---|---|
+| Backend, frontend ou Redis arrêté ou en erreur | ✅ oui |
+| Dossier d'export inaccessible en écriture | ✅ oui |
+| Boucle de synchronisation figée | ✅ oui |
+| Conteneur Uptime Kuma arrêté | ❌ non |
+| Arrêt ou perte totale de la machine hôte | ❌ non |
+
+Autrement dit, la supervision couvre les défaillances **de l'application**, mais pas
+celles **de son hôte** : si la machine s'éteint, le superviseur s'éteint avec elle et
+personne n'est alerté.
+
+L'architecture cible consiste à héberger Uptime Kuma sur une machine distincte de
+l'instance supervisée, ce qui lève cette limite. Elle n'a pas été retenue ici parce
+que l'instance de référence tourne sur un poste de développement portable : une cible
+qui se met en veille et change de réseau produirait un flux continu de fausses
+alertes, sans valeur de supervision. Superviser une instance réellement disponible en
+permanence suppose de la déployer au préalable sur un serveur — ce qui dépasse le
+cadre actuel du projet.
 
 ### Une spécificité de ce logiciel
 
@@ -49,26 +73,34 @@ Uptime Kuma envoie périodiquement une requête HTTP sur l'endpoint de santé de
 l'instance supervisée et juge la réponse.
 
 ```
-   Serveur de supervision                Serveur applicatif
-  ┌──────────────────────┐             ┌──────────────────────┐
-  │                      │  GET        │  doc2ai-backend      │
-  │   Uptime Kuma        ├────────────►│  /api/monitoring/    │
-  │                      │  toutes     │      health          │
-  │   ├─ seuils          │  les 60 s   │                      │
-  │   └─ notifications   │◄────────────┤  200 / 503 + JSON    │
-  └──────────┬───────────┘   réponse   └──────────────────────┘
-             │
-             ▼  en cas de panne
-      Discord / e-mail
+  Machine hôte
+ ┌──────────────────────────────────────────────────────────────┐
+ │  pile « uptime-kuma »                pile « doc2ai »          │
+ │  ┌──────────────────────┐          ┌──────────────────────┐  │
+ │  │                      │  GET     │  doc2ai-backend      │  │
+ │  │   Uptime Kuma        ├─────────►│  /api/monitoring/    │  │
+ │  │                      │  toutes  │      health          │  │
+ │  │   ├─ seuils          │  les 60s │                      │  │
+ │  │   └─ notifications   │◄─────────┤  200 / 503 + JSON    │  │
+ │  └──────────┬───────────┘  réponse └──────────────────────┘  │
+ └─────────────┼────────────────────────────────────────────────┘
+               ▼  en cas de panne
+        Discord / e-mail
 ```
+
+Les deux piles étant sur des réseaux Docker distincts, Uptime Kuma joint l'API par
+`host.docker.internal:3000`, c'est-à-dire par le port publié sur l'hôte. Ce chemin
+est délibéré : il emprunte exactement la même route qu'un navigateur utilisateur, et
+détecterait donc aussi une défaillance de publication du port, ce qu'un accès direct
+par le réseau interne de Docker masquerait.
 
 Ce choix se justifie sur trois points :
 
 - **Aucune modification de l'application.** Doc2AI expose déjà son état ; il n'a
   pas à connaître l'existence d'un superviseur, ni son adresse.
-- **La panne totale est détectée.** Si le conteneur, Docker ou la machine entière
-  s'arrêtent, la requête échoue (timeout ou connexion refusée) et l'alerte part.
-  C'est le cas de panne le plus important, et il est couvert par construction.
+- **L'arrêt de l'application est détecté par construction.** Si le conteneur ou
+  Docker s'arrêtent, la requête échoue (délai dépassé ou connexion refusée) et
+  l'alerte part, sans que l'application ait eu à signaler quoi que ce soit.
 - **Aucune donnée ne sort de l'instance.** Le superviseur va chercher
   l'information ; l'instance n'émet rien vers l'extérieur.
 
@@ -80,9 +112,10 @@ installations de Doc2AI d'émettre des données vers un service tiers, ce qui es
 contraire au principe d'un outil auto-hébergé.
 
 > **Prérequis réseau.** Le modèle *pull* suppose qu'Uptime Kuma puisse joindre
-> l'instance supervisée. Dans le déploiement de référence, les deux tournent sur le
-> même serveur : Uptime Kuma interroge l'API sur le réseau privé, sans qu'aucun
-> endpoint de santé ne soit exposé publiquement.
+> l'instance supervisée. C'est le cas ici puisque les deux tournent sur la même
+> machine : aucun endpoint de santé n'est exposé publiquement, et aucune redirection
+> de port vers Internet n'a été mise en place — l'application détient des
+> identifiants OAuth et un accès en écriture au disque de l'utilisateur.
 
 ---
 
@@ -221,6 +254,10 @@ axes d'amélioration.
 
 ## 6. Limites connues
 
+- **Le superviseur partage l'hôte de l'application supervisée.** Une panne de la
+  machine emporte les deux, et aucune alerte n'est émise. Les défaillances de
+  l'application sont couvertes, celles de son hôte ne le sont pas. Lever cette
+  limite suppose d'héberger Uptime Kuma sur une machine distincte (voir § 1).
 - **Docker Compose ne redémarre pas un conteneur `unhealthy`.** Les `healthcheck`
   apportent de l'observabilité et de l'ordonnancement au démarrage, pas de
   l'auto-réparation. La politique `restart: unless-stopped` ne couvre que les
@@ -229,6 +266,9 @@ axes d'amélioration.
   distance**, par choix (voir le périmètre). Elles disposent en revanche des
   `healthcheck` locaux et de l'endpoint de santé, qu'un utilisateur averti peut
   brancher sur sa propre supervision.
+- **La sonde `exportPath` écrit un fichier témoin à chaque appel.** C'est le prix de
+  la fiabilité sur un montage lié (voir § 3.1). Le fichier est immédiatement
+  supprimé, mais l'endpoint approfondi n'est donc pas totalement sans effet de bord.
 - **La sonde `syncFreshness` ne distingue pas** une absence de changement à
   synchroniser d'une boucle bloquée : elle mesure la date de la dernière
   synchronisation réussie, laquelle avance à chaque cycle même sans document
