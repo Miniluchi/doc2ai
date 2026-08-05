@@ -1,5 +1,6 @@
 import { access } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
+import path from 'node:path';
 import config from '../config/env.js';
 
 /**
@@ -35,6 +36,8 @@ export interface MonitoringSnapshot {
   activeMonitors: number;
   totalActiveSources: number;
   lastSync: Date | null;
+  /** Destination folders of the active sources, relative to the export root. */
+  exportDestinations: string[];
 }
 
 type ProbeOutcome = Omit<ProbeResult, 'name' | 'durationMs'>;
@@ -75,31 +78,53 @@ async function runProbe(name: string, probe: () => Promise<ProbeOutcome>): Promi
 }
 
 /**
- * Export directory must exist and be writable.
+ * Export root and every source destination must be writable.
  *
  * This is a real silent-failure mode: the directory is a bind mount
  * (`${EXPORT_PATH}:/app/exports`). If the host path is missing or read-only the
- * app keeps converting and reports success while nothing lands on disk.
+ * app keeps converting while nothing lands on disk.
+ *
+ * Files are written to per-source sub-directories, not to the root, so checking
+ * only the root would miss the likeliest case: one destination turned read-only
+ * while the mount itself stays fine.
  */
-async function checkExportPath(): Promise<ProbeOutcome> {
-  const threshold = 'directory exists and is writable';
+async function checkExportPath(destinations: string[]): Promise<ProbeOutcome> {
+  const threshold = 'export root and every source destination are writable';
+  const targets = [
+    config.exportPath,
+    ...destinations.map((destination) => path.join(config.exportPath, destination)),
+  ];
 
-  try {
-    await access(config.exportPath, fsConstants.W_OK);
-    return {
-      status: 'ok',
-      message: 'Export directory is writable',
-      observed: config.exportPath,
-      threshold,
-    };
-  } catch (error) {
+  const unwritable: string[] = [];
+
+  for (const target of targets) {
+    try {
+      await access(target, fsConstants.W_OK);
+    } catch (error) {
+      // A destination that does not exist yet is fine — it is created on the
+      // first export, and the root check already covers whether that can work.
+      const isMissingDestination =
+        (error as NodeJS.ErrnoException).code === 'ENOENT' && target !== config.exportPath;
+      if (isMissingDestination) continue;
+      unwritable.push(target);
+    }
+  }
+
+  if (unwritable.length > 0) {
     return {
       status: 'down',
-      message: `Export directory is not writable: ${(error as Error).message}`,
-      observed: config.exportPath,
+      message: `Not writable: ${unwritable.join(', ')}`,
+      observed: unwritable.join(', '),
       threshold,
     };
   }
+
+  return {
+    status: 'ok',
+    message: `Export root and ${String(destinations.length)} destination(s) are writable`,
+    observed: config.exportPath,
+    threshold,
+  };
 }
 
 /**
@@ -210,7 +235,7 @@ export function aggregateStatus(probes: ProbeResult[]): ProbeStatus {
 export async function runHealthProbes(monitoring: MonitoringSnapshot): Promise<HealthReport> {
   const probes = await Promise.all([
     runProbe('monitoring', () => Promise.resolve(checkMonitoringLoop(monitoring))),
-    runProbe('exportPath', checkExportPath),
+    runProbe('exportPath', () => checkExportPath(monitoring.exportDestinations)),
     runProbe('syncFreshness', () => Promise.resolve(checkSyncFreshness(monitoring))),
   ]);
 
