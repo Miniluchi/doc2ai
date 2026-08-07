@@ -15,16 +15,34 @@ le poste d'un utilisateur n'est joignable par personne d'autre.
 
 Le périmètre retenu distingue deux niveaux :
 
-| Niveau | Ce qui est surveillé | Où | Bénéficiaire |
+| Niveau | Ce qui est surveillé | Où | Activation |
 |---|---|---|---|
-| **Local** | Les 3 conteneurs et l'état interne de l'application | Chez chaque utilisateur, embarqué dans le dépôt | Tout utilisateur de Doc2AI |
-| **Applicatif** | L'instance de référence, via son endpoint de santé | Uptime Kuma, pile Docker distincte | L'équipe projet |
+| **Local** | Les 3 conteneurs et l'état interne de l'application | Embarqué dans le dépôt | Toujours actif |
+| **Applicatif** | L'instance, via son endpoint de santé approfondi | Uptime Kuma, profil `monitoring` du dépôt | Sur demande |
 
 Ce découpage répond à une contrainte de conception : **aucun utilisateur ne doit se
-voir imposer l'installation d'un service de supervision dont il n'a pas l'usage.**
-Les sondes locales sont donc de simples `healthcheck` Docker et un endpoint HTTP,
-sans dépendance supplémentaire ; Uptime Kuma est déployé séparément, en dehors du
-dépôt, et n'est pas livré aux utilisateurs.
+voir imposer un service de supervision dont il n'a pas l'usage.** Les sondes locales
+sont donc de simples `healthcheck` Docker et un endpoint HTTP, sans dépendance
+supplémentaire.
+
+Uptime Kuma, lui, est **livré avec le projet mais désactivé par défaut**, au moyen
+d'un profil Docker Compose. Un démarrage ordinaire ne le lance pas :
+
+```bash
+docker compose up -d                          # application seule
+docker compose --profile monitoring up -d     # application + supervision
+```
+
+Le tableau de bord est alors disponible sur `http://localhost:3001`. Il est lié à
+l'interface de bouclage : il dispose de son propre compte, mais n'a pas de raison
+d'être joignable depuis le réseau local par défaut.
+
+Ce choix évite les deux écueils symétriques. Imposer la supervision à toute
+installation serait disproportionné pour un outil mono-utilisateur — Uptime Kuma est
+un serveur à part entière, avec sa base et son interface d'administration. Ne pas la
+livrer du tout la rendrait impossible à activer sans travail de configuration. Le
+profil laisse la décision à l'exploitant, ce qui est le comportement attendu d'une
+brique d'observabilité optionnelle.
 
 ### Ce qui est réellement en place, et ses limites
 
@@ -73,26 +91,31 @@ Uptime Kuma envoie périodiquement une requête HTTP sur l'endpoint de santé de
 l'instance supervisée et juge la réponse.
 
 ```
-  Machine hôte
- ┌──────────────────────────────────────────────────────────────┐
- │  pile « uptime-kuma »                pile « doc2ai »          │
- │  ┌──────────────────────┐          ┌──────────────────────┐  │
- │  │                      │  GET     │  doc2ai-backend      │  │
- │  │   Uptime Kuma        ├─────────►│  /api/monitoring/    │  │
- │  │                      │  toutes  │      health          │  │
- │  │   ├─ seuils          │  les 60s │                      │  │
- │  │   └─ notifications   │◄─────────┤  200 / 503 + JSON    │  │
- │  └──────────┬───────────┘  réponse └──────────────────────┘  │
- └─────────────┼────────────────────────────────────────────────┘
+  Machine hôte — réseau « doc2ai-network »
+ ┌───────────────────────────────────────────────────────────────┐
+ │  profil « monitoring »                                        │
+ │  ┌──────────────────────┐          ┌──────────────────────┐   │
+ │  │                      │  GET     │  backend             │   │
+ │  │   uptime-kuma        ├─────────►│  /api/monitoring/    │   │
+ │  │                      │  toutes  │      health          │   │
+ │  │   ├─ seuils          │  les 60s │                      │   │
+ │  │   └─ notifications   │◄─────────┤  200 / 503 + JSON    │   │
+ │  └──────────┬───────────┘  réponse └──────────────────────┘   │
+ └─────────────┼─────────────────────────────────────────────────┘
                ▼  en cas de panne
         Discord / e-mail
 ```
 
-Les deux piles étant sur des réseaux Docker distincts, Uptime Kuma joint l'API par
-`host.docker.internal:3000`, c'est-à-dire par le port publié sur l'hôte. Ce chemin
-est délibéré : il emprunte exactement la même route qu'un navigateur utilisateur, et
-détecterait donc aussi une défaillance de publication du port, ce qu'un accès direct
-par le réseau interne de Docker masquerait.
+Les deux services partageant le réseau `doc2ai-network`, Uptime Kuma joint l'API par
+son nom de service : `http://backend:3000/api/monitoring/health`. Ce choix est
+volontairement portable — `host.docker.internal`, qui désigne la machine hôte,
+n'existe pas sur une installation Docker Linux standard, et une configuration livrée
+avec le projet ne peut pas dépendre de Docker Desktop.
+
+En contrepartie, ce chemin **ne traverse pas la publication de port** : une panne
+affectant uniquement l'exposition du port 3000 sur l'hôte resterait invisible. Un
+exploitant qui souhaite couvrir ce cas peut ajouter un second moniteur pointant sur
+l'URL publiée, telle qu'un navigateur l'utiliserait.
 
 Ce choix se justifie sur trois points :
 
@@ -217,7 +240,7 @@ une dégradation partielle, et à user la vigilance de l'équipe.
 | Paramètre | Valeur | Pourquoi |
 |---|---|---|
 | Type de moniteur | HTTP(s) | Interroge l'endpoint et juge le code de statut |
-| URL | `http://<hôte>:3000/api/monitoring/health` | Endpoint approfondi, pas la sonde de liveness |
+| URL | `http://backend:3000/api/monitoring/health` | Endpoint approfondi, pas la sonde de liveness |
 | Intervalle | 60 s | Compromis entre réactivité et charge |
 | Nouvelles tentatives avant alerte | **3** | Évite les fausses alertes sur un incident réseau passager : une alerte n'est émise qu'après 3 échecs consécutifs, soit environ 3 minutes d'indisponibilité réelle |
 | Délai d'expiration de la requête | 10 s | Une réponse plus lente est traitée comme un échec |
@@ -257,7 +280,11 @@ axes d'amélioration.
 - **Le superviseur partage l'hôte de l'application supervisée.** Une panne de la
   machine emporte les deux, et aucune alerte n'est émise. Les défaillances de
   l'application sont couvertes, celles de son hôte ne le sont pas. Lever cette
-  limite suppose d'héberger Uptime Kuma sur une machine distincte (voir § 1).
+  limite suppose d'héberger Uptime Kuma sur une machine distincte (voir § 1) — le
+  profil `monitoring` reste alors utilisable, en pointant les moniteurs sur l'URL
+  publiée de l'instance à surveiller plutôt que sur le nom de service interne.
+- **La supervision par le nom de service interne ne couvre pas la publication de
+  port** (voir § 2). Un second moniteur sur l'URL publiée comble ce trou.
 - **Docker Compose ne redémarre pas un conteneur `unhealthy`.** Les `healthcheck`
   apportent de l'observabilité et de l'ordonnancement au démarrage, pas de
   l'auto-réparation. La politique `restart: unless-stopped` ne couvre que les

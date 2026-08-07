@@ -48,6 +48,7 @@ From there you can:
 | Command | Description |
 |---|---|
 | `docker compose up -d` | Start all services (builds images if needed) |
+| `docker compose --profile monitoring up -d` | Same, plus the optional supervision dashboard on http://localhost:3001 |
 | `docker compose down` | Stop all services |
 | `docker compose logs -f` | Follow live logs |
 | `docker compose logs -f backend` | Follow backend logs only |

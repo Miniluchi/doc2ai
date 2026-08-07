@@ -66,6 +66,25 @@ services:
     networks:
       - doc2ai-network
 
+  # Optional supervision, disabled by default:
+  #   docker compose --profile monitoring up -d
+  # Deliberately without depends_on: the monitor must start and report the
+  # backend as down, rather than wait for a backend that may never come up.
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    # Bound to the loopback interface: the dashboard has its own account, but it
+    # has no reason to be reachable from the local network by default.
+    ports:
+      - "127.0.0.1:${KUMA_PORT:-3001}:3001"
+    environment:
+      - TZ=Europe/Paris
+    volumes:
+      - kuma_data:/app/data
+    networks:
+      - doc2ai-network
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -89,6 +108,7 @@ volumes:
   backend_temp:
   backend_db:
   redis_data:
+  kuma_data:
 
 networks:
   doc2ai-network:
