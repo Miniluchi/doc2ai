@@ -72,15 +72,18 @@ openssl rand -base64 32
 
 1. Dans la [Google Cloud Console](https://console.cloud.google.com/), créez ou sélectionnez un projet.
 2. **API et services → Bibliothèque** : activez **Google Drive API**.
-3. **API et services → Écran de consentement OAuth** : configurez l'écran (type « Externe »),
-   puis ajoutez votre compte Google comme utilisateur de test.
-4. **API et services → Identifiants → Créer des identifiants → ID client OAuth**, type
+3. **API et services → Écran de consentement OAuth** : configurez l'écran (type « Externe »).
+4. Toujours dans **Écran de consentement OAuth**, section **Utilisateurs de test** :
+   ajoutez le compte Google que vous utiliserez dans Doc2AI. **Cette étape est
+   indispensable** : l'application OAuth créée reste en mode « Test », et Google refuse
+   la connexion (« Accès bloqué », erreur `access_denied`) à tout compte non déclaré ici.
+5. **API et services → Identifiants → Créer des identifiants → ID client OAuth**, type
    **Application Web**.
-5. Dans **URI de redirection autorisés**, ajoutez exactement la valeur de `GOOGLE_REDIRECT_URI` :
+6. Dans **URI de redirection autorisés**, ajoutez exactement la valeur de `GOOGLE_REDIRECT_URI` :
    ```
    http://localhost:3000/api/auth/google/callback
    ```
-6. Copiez le **Client ID** et le **Client secret** affichés dans `GOOGLE_CLIENT_ID` et
+7. Copiez le **Client ID** et le **Client secret** affichés dans `GOOGLE_CLIENT_ID` et
    `GOOGLE_CLIENT_SECRET`.
 
 ### `EXPORT_PATH`
@@ -155,6 +158,14 @@ L'URI de redirection déclarée dans la Google Cloud Console ne correspond pas e
 `GOOGLE_REDIRECT_URI`. Vérifiez qu'elles sont identiques au caractère près (protocole, port,
 chemin `/api/auth/google/callback`). Toute modification du `.env` nécessite un
 `docker compose up -d --build`, car l'ID client Google est aussi injecté au build du frontend.
+
+**La connexion Google échoue avec « Accès bloqué » (erreur 403 : access_denied)**
+Votre application OAuth est en mode « Test », le statut par défaut dans la Google Cloud
+Console : seuls les comptes déclarés comme utilisateurs de test peuvent se connecter (voir
+l'étape 4 de la section 2). Ajoutez votre compte dans **API et services → Écran de
+consentement OAuth → Utilisateurs de test**, puis relancez la connexion depuis l'interface.
+Aucune reconstruction des conteneurs n'est nécessaire : cette configuration est entièrement
+côté Google.
 
 **La page <http://localhost:5173> ne répond pas**
 Attendez ~30 s après le premier `up`. Sinon, consultez les journaux :
